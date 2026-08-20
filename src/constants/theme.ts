@@ -136,33 +136,6 @@ export const SPACING = {
 
 export type SpacingToken = keyof typeof SPACING;
 
-/**
- * フォントサイズは4つだけ。中途半端な倍率はドット絵フォントがにじむ（CLAUDE.md §3.1）。
- *
- * DotGothic16 は16px基準のフォントなので、**`body`(16) と `display`(32) が最も鮮明**。
- * `caption`(12) と `title`(24) は16の整数倍ではないため、実機で確認してから使うこと。
- */
-export const FONT_SIZE = {
-  caption: 12,
-  body: 16,
-  title: 24,
-  display: 32,
-} as const;
-
-export type FontSizeToken = keyof typeof FONT_SIZE;
-
-/**
- * 枠線の太さ。角丸なしの `borderWidth` ＋ 濃淡2色で立体枠を作る（CLAUDE.md §3.1）。
- * 硬い矩形の影のオフセットにも同じ値を使う。
- */
-export const BORDER_WIDTH = {
-  hairline: 1,
-  normal: 2,
-  thick: 4,
-} as const;
-
-export type BorderWidthToken = keyof typeof BORDER_WIDTH;
-
 // ---------------------------------------------------------------------------
 // フォント
 // ---------------------------------------------------------------------------
@@ -182,6 +155,62 @@ export const FONT_FAMILY = {
 
 export type FontFamilyToken = keyof typeof FONT_FAMILY;
 
+/**
+ * ドット絵フォントのサイズは3つだけ。**基準17pxとその整数倍（17 / 34 / 51）。**
+ *
+ * 【なぜ16の倍数ではないのか】
+ * DotGothic16 は名前に反して16pxグリッドにきれいに乗っていない。
+ * `unitsPerEm` が 1000 で、1グリッド = 62.5 units が整数に丸められているため、
+ * グリフの輪郭が正確なピクセル境界に揃っていない（座標のGCDは1 units）。
+ * そのため「16の倍数なら鮮明」という前提が成立しない。
+ *
+ * 実測（4種類の日本語サンプル × デバイスピクセル比1/2/3で、
+ * アンチエイリアス画素の比率をサイズ由来のトレンド除去後に比較）した結果:
+ *
+ *   17 / 34 / 51 … 最も鮮明（最悪ケースの残差 +0.2〜+2.2%）
+ *   16 / 24 / 32 / 48 … 明確に劣る（同 +7〜+8%）。特に24pxが最悪
+ *
+ * サイズを増やすときも17の整数倍から選ぶこと。中途半端な倍率はにじむ（CLAUDE.md §3.1）。
+ */
+export const FONT_SIZE = {
+  /** 基準サイズ。UIラベル・カレンダーの日付・ボタンなど大半はこれ。 */
+  body: 17,
+  /** 画面見出し・年月表示。 */
+  title: 34,
+  /** 空状態やロゴ脇など、大きく見せたいときだけ。 */
+  display: 51,
+} as const;
+
+export type FontSizeToken = keyof typeof FONT_SIZE;
+
+/**
+ * 長文用の補助スタイル（要件定義書 12.4 / CLAUDE.md §3.1）。
+ *
+ * メモ・議事録・ブロック理由など、読ませる必要がある箇所はゴシックに切り替える。
+ * ゴシックはドット絵フォントと違いグリッドの制約が無いので、17の倍数に縛られない。
+ *
+ * **fontFamily とセットで持つのは意図的。** サイズだけを取り出して
+ * ドット絵フォントに15pxを指定されると、まさに避けたいにじみが起きる
+ * （SCHEDULE_KIND / ATTENDANCE_STATUS が色と記号をセットで持つのと同じ考え方）。
+ */
+export const LONG_TEXT = {
+  fontFamily: FONT_FAMILY.gothic,
+  fontSize: 15,
+  lineHeight: 24,
+} as const;
+
+/**
+ * 枠線の太さ。角丸なしの `borderWidth` ＋ 濃淡2色で立体枠を作る（CLAUDE.md §3.1）。
+ * 硬い矩形の影のオフセットにも同じ値を使う。
+ */
+export const BORDER_WIDTH = {
+  hairline: 1,
+  normal: 2,
+  thick: 4,
+} as const;
+
+export type BorderWidthToken = keyof typeof BORDER_WIDTH;
+
 // ---------------------------------------------------------------------------
 
 /** まとめて渡したいときに使う。個別importでも同じものが取れる。 */
@@ -191,6 +220,7 @@ export const theme = {
   attendanceStatus: ATTENDANCE_STATUS,
   spacing: SPACING,
   fontSize: FONT_SIZE,
+  longText: LONG_TEXT,
   borderWidth: BORDER_WIDTH,
   fontFamily: FONT_FAMILY,
 } as const;
