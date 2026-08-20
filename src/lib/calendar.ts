@@ -56,6 +56,11 @@ export function addMonths({ year, month }: YearMonth, delta: number): YearMonth 
   };
 }
 
+/** 'YYYY-MM-DD' が属する年月を取り出す。隣接月のセルをタップしたときの移動先に使う。 */
+export function yearMonthOf(dateKey: string): YearMonth {
+  return { year: Number(dateKey.slice(0, 4)), month: Number(dateKey.slice(5, 7)) };
+}
+
 export function formatMonthLabel({ year, month }: YearMonth): string {
   return `${year}年${month}月`;
 }

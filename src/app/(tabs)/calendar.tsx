@@ -1,8 +1,9 @@
 import { useMemo, useState } from 'react';
-import { FlatList, Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
+import { FlatList, Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Text } from '@/components/app-text';
+import { EventCard } from '@/components/event-card';
 import { PixelFrame } from '@/components/pixel/frame';
 import {
   ATTENDANCE_STATUS,
@@ -23,8 +24,14 @@ import {
   formatMonthLabel,
   WEEKDAY_LABELS,
   type YearMonth,
+  yearMonthOf,
 } from '@/lib/calendar';
-import { buildScheduleEvents, groupEventsByDate, type ScheduleEvent } from '@/lib/schedule';
+import {
+  buildScheduleEvents,
+  groupEventsByDate,
+  resolveMemberAnswers,
+  type ScheduleEvent,
+} from '@/lib/schedule';
 
 /** S0 カレンダー。月表示のみ。週表示・選択日の予定リストは後のフェーズ。 */
 export default function CalendarScreen() {
@@ -35,17 +42,40 @@ export default function CalendarScreen() {
   }, []);
 
   const [cursor, setCursor] = useState<YearMonth>(currentMonth);
+  // 起動時は今日を選択しておく。開いた瞬間に今日の予定が見える状態にするため
+  const [selectedDate, setSelectedDate] = useState<string | null>(todayKey);
 
-  // P1でSupabaseに差し替えると、この3行がasyncになり loading/error 処理が要る（CLAUDE.md §5.2）
+  /** 月送りでは選択を解除する。移動先の月に選択日が無く、状態が噛み合わなくなるため */
+  const goToMonth = (next: YearMonth) => {
+    setCursor(next);
+    setSelectedDate(null);
+  };
+
+  /**
+   * セルのタップ。隣接月のセルなら、その月へ移動したうえでその日を選択する。
+   * 「日付をタップすれば予定が見える」挙動をカレンダー全体で揃えるため、
+   * 隣接月だけ反応しない、という作りにはしない。
+   */
+  const handleSelectDate = (cell: CalendarCell) => {
+    if (!cell.isCurrentMonth) setCursor(yearMonthOf(cell.date));
+    setSelectedDate(cell.date);
+  };
+
+  // P1でSupabaseに差し替えると、この辺りがasyncになり loading/error 処理が要る（CLAUDE.md §5.2）
+  const members = useMemo(() => getMembers(), []);
+  const availabilities = useMemo(() => getAvailabilities(), []);
+
   const eventsByDate = useMemo(() => {
     const events = buildScheduleEvents({
       projects: getProjects(),
       streams: getStreams(),
-      availabilities: getAvailabilities(),
-      memberCount: getMembers().length,
+      availabilities,
+      memberCount: members.length,
     });
     return groupEventsByDate(events);
-  }, []);
+  }, [availabilities, members]);
+
+  const selectedEvents = selectedDate ? (eventsByDate[selectedDate] ?? []) : [];
 
   const cells = useMemo(() => buildMonthGrid(cursor, todayKey), [cursor, todayKey]);
 
@@ -63,9 +93,15 @@ export default function CalendarScreen() {
           {formatMonthLabel(cursor)}
         </Text>
         <View style={styles.headerRow}>
-          <NavButton label="◀ 前月" onPress={() => setCursor(addMonths(cursor, -1))} />
-          <NavButton label="今日" onPress={() => setCursor(currentMonth)} />
-          <NavButton label="次月 ▶" onPress={() => setCursor(addMonths(cursor, 1))} />
+          <NavButton label="◀ 前月" onPress={() => goToMonth(addMonths(cursor, -1))} />
+          <NavButton
+            label="今日"
+            onPress={() => {
+              setCursor(currentMonth);
+              setSelectedDate(todayKey);
+            }}
+          />
+          <NavButton label="次月 ▶" onPress={() => goToMonth(addMonths(cursor, 1))} />
         </View>
       </PixelFrame>
 
@@ -85,23 +121,60 @@ export default function CalendarScreen() {
         ))}
       </View>
 
-      <FlatList
-        data={cells}
-        numColumns={DAYS_IN_WEEK}
-        scrollEnabled={false}
-        keyExtractor={(cell) => cell.date}
-        style={styles.grid}
-        renderItem={({ item }) => (
-          <DayCell
-            cell={item}
-            width={cellWidth}
-            compact={compact}
-            events={item.isCurrentMonth ? (eventsByDate[item.date] ?? []) : []}
-          />
-        )}
-      />
+      <ScrollView contentContainerStyle={styles.scrollBody}>
+        <FlatList
+          data={cells}
+          numColumns={DAYS_IN_WEEK}
+          scrollEnabled={false}
+          keyExtractor={(cell) => cell.date}
+          style={styles.grid}
+          renderItem={({ item }) => (
+            <DayCell
+              cell={item}
+              width={cellWidth}
+              compact={compact}
+              selected={item.date === selectedDate}
+              onPress={handleSelectDate}
+              events={item.isCurrentMonth ? (eventsByDate[item.date] ?? []) : []}
+            />
+          )}
+        />
+
+        <View style={styles.selectedSection}>
+          {selectedDate === null ? (
+            <Text style={styles.hint}>日付をタップすると、その日の予定が出ます</Text>
+          ) : (
+            <>
+              <Text style={styles.selectedHeading}>{formatDateHeading(selectedDate)}</Text>
+              {selectedEvents.length === 0 ? (
+                <Text style={styles.hint}>予定はありません</Text>
+              ) : (
+                selectedEvents.map((e) => (
+                  <EventCard
+                    key={e.id}
+                    event={e}
+                    memberAnswers={
+                      e.stream_id
+                        ? resolveMemberAnswers(members, availabilities, e.stream_id)
+                        : undefined
+                    }
+                  />
+                ))
+              )}
+            </>
+          )}
+        </View>
+      </ScrollView>
     </SafeAreaView>
   );
+}
+
+/** '2026-08-21' → '8月21日(金)' */
+function formatDateHeading(dateKey: string): string {
+  const month = Number(dateKey.slice(5, 7));
+  const day = Number(dateKey.slice(8, 10));
+  const weekday = WEEKDAY_LABELS[new Date(dateKey).getUTCDay()];
+  return `${month}月${day}日(${weekday})`;
 }
 
 function NavButton({ label, onPress }: { label: string; onPress: () => void }) {
@@ -120,17 +193,24 @@ function DayCell({
   cell,
   width,
   compact,
+  selected,
+  onPress,
   events,
 }: {
   cell: CalendarCell;
   width: number;
   compact: boolean;
+  selected: boolean;
+  onPress: (cell: CalendarCell) => void;
   events: ScheduleEvent[];
 }) {
   const stream = events.find((e) => e.attendance);
 
   return (
-    <View style={[styles.cell, { width }]}>
+    <Pressable
+      onPress={() => onPress(cell)}
+      style={[styles.cell, { width }, selected && styles.cellSelected]}
+    >
       {/* 今日は硬い矩形の枠で囲む。色ではなく枠なので、予定の色と衝突しない */}
       {cell.isToday && <View style={styles.todayMarker} pointerEvents="none" />}
 
@@ -160,7 +240,7 @@ function DayCell({
           ))}
         </View>
       )}
-    </View>
+    </Pressable>
   );
 }
 
@@ -198,7 +278,11 @@ const styles = StyleSheet.create({
   weekdayText: { fontSize: FONT_SIZE.body, color: COLORS.textMuted },
   weekdayTextWeekend: { color: COLORS.textWeekend },
 
+  scrollBody: { paddingBottom: SPACING.xl },
   grid: { paddingHorizontal: SPACING.sm },
+  selectedSection: { paddingHorizontal: SPACING.sm, paddingTop: SPACING.md },
+  selectedHeading: { fontSize: FONT_SIZE.title, marginBottom: SPACING.sm },
+  hint: { fontSize: FONT_SIZE.body, color: COLORS.textMuted },
   cell: {
     height: LAYOUT.calendarCellHeight,
     borderWidth: BORDER_WIDTH.hairline,
@@ -207,6 +291,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: SPACING.xs,
     paddingTop: SPACING.xs,
   },
+  /** 選択中のセル。今日マーカー（枠）と併用できるよう、背景で示す */
+  cellSelected: { backgroundColor: COLORS.surfaceSunken },
   todayMarker: {
     position: 'absolute',
     top: 0,

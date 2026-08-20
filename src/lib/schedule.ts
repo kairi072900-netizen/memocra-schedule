@@ -7,8 +7,8 @@
 
 // 型のみのimport。実行時にはtheme.tsへ依存しないので lib の純粋性は保たれる。
 // トークン名を再定義せずに済み、theme.ts とのズレも起きない。
-import type { AttendanceStatusToken, ScheduleKindToken } from '@/constants/theme';
-import type { Availability, Project, Stream } from '@/types';
+import type { AnswerBadgeToken, AttendanceStatusToken, ScheduleKindToken } from '@/constants/theme';
+import type { Availability, Member, Project, Stream } from '@/types';
 
 export interface ScheduleEvent {
   id: string;
@@ -16,13 +16,25 @@ export interface ScheduleEvent {
   date: string;
   kind: ScheduleKindToken;
   title: string;
+  /** 'HH:MM'。予定カードに出す。 */
+  time: string;
   /** 配信予定のみ。出欠の集約結果。 */
   attendance?: AttendanceStatusToken;
+  /** 配信予定のみ。個人の回答を引くためのキー。 */
+  stream_id?: string;
 }
 
 /** ISO日時から日付部分だけ取り出す。'2026-08-07T19:00:00+09:00' → '2026-08-07' */
 function dateOf(isoAt: string): string {
   return isoAt.slice(0, 10);
+}
+
+/**
+ * ISO日時から時刻だけ取り出す。'2026-08-07T19:00:00+09:00' → '19:00'
+ * 文字列に含まれるオフセットをそのまま採用する（Dateに通すと端末のタイムゾーンでずれるため）。
+ */
+function timeOf(isoAt: string): string {
+  return isoAt.slice(11, 16);
 }
 
 /**
@@ -67,6 +79,7 @@ export function buildScheduleEvents({
         // sns / other は今のところカレンダーの色を持たない。ショート扱いで出す。
         kind: p.kind === 'long' ? 'longPublish' : 'shortPublish',
         title: p.title,
+        time: timeOf(p.publish_at),
       });
     }
     if (p.shoot_at) {
@@ -75,6 +88,7 @@ export function buildScheduleEvents({
         date: dateOf(p.shoot_at),
         kind: 'shoot',
         title: p.title,
+        time: timeOf(p.shoot_at),
       });
     }
   }
@@ -86,7 +100,9 @@ export function buildScheduleEvents({
       date: dateOf(s.starts_at),
       kind: 'stream',
       title: s.title,
+      time: timeOf(s.starts_at),
       attendance: aggregateAttendance(answers, memberCount),
+      stream_id: s.id,
     });
   }
 
@@ -101,4 +117,28 @@ export function groupEventsByDate(events: ScheduleEvent[]): Record<string, Sched
     (byDate[e.date] ??= []).push(e);
   }
   return byDate;
+}
+
+export interface MemberAnswer {
+  member: Member;
+  answer: AnswerBadgeToken;
+}
+
+/**
+ * 配信1件について、メンバー4人ぶんの回答を `members` の並び順で返す。
+ *
+ * 回答レコードが無いメンバーは 'noAnswer' になる（未回答はレコードを作らない、要件定義書 第7章）。
+ * **常に全員ぶんを返す**ので、カード側は「誰が答えていないか」を欠落ではなく明示として描ける。
+ */
+export function resolveMemberAnswers(
+  members: Member[],
+  availabilities: Availability[],
+  streamId: string,
+): MemberAnswer[] {
+  return members.map((member) => {
+    const found = availabilities.find(
+      (a) => a.stream_id === streamId && a.member_id === member.id,
+    );
+    return { member, answer: found ? found.answer : 'noAnswer' };
+  });
 }

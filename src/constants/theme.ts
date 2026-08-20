@@ -129,6 +129,29 @@ export const ATTENDANCE_STATUS = {
 
 export type AttendanceStatusToken = keyof typeof ATTENDANCE_STATUS;
 
+/**
+ * **メンバー個人**の出欠回答（要件定義書 F7）。上の ATTENDANCE_STATUS とは別物。
+ *
+ * ATTENDANCE_STATUS は「配信1件を4人ぶん集約した結果」、こちらは「1人の回答そのもの」。
+ *
+ * 【なぜ maybe だけ記号を変えるのか】
+ * 集約側の `⚠` は「対応が必要」という警告の意味を持たせている。
+ * 個人の回答は選択肢のひとつでしかないので、警告のニュアンスを持つ `⚠` を流用すると
+ * 「この人の回答自体が問題」という誤読を招く。`△` なら「未定」という状態を表すだけで済む。
+ *
+ * 欠席（✕）と未回答（―）は集約と同じ記号でよい。
+ * 「個人の状態＝集約の材料」という関係がそのまま成り立ち、記号を変える理由がないため。
+ */
+export const ANSWER_BADGE = {
+  yes: { color: palette.green, symbol: '○', label: '出れる' },
+  maybe: { color: palette.yellow, symbol: '△', label: '未定' },
+  no: { color: palette.red, symbol: '✕', label: '無理' },
+  /** 回答レコードが存在しないメンバー。 */
+  noAnswer: { color: palette.gray, symbol: '―', label: '未回答' },
+} as const satisfies Record<string, Badge>;
+
+export type AnswerBadgeToken = keyof typeof ANSWER_BADGE;
+
 // ---------------------------------------------------------------------------
 // 余白・サイズ
 // ---------------------------------------------------------------------------
@@ -202,6 +225,28 @@ export type FontSizeToken = keyof typeof FONT_SIZE;
  * ドット絵フォントに15pxを指定されると、まさに避けたいにじみが起きる
  * （SCHEDULE_KIND / ATTENDANCE_STATUS が色と記号をセットで持つのと同じ考え方）。
  */
+/**
+ * 下部タブバーのラベル**だけ**に使うゴシック。
+ *
+ * ドット絵フォント17pxだと「プロジェクト」（全角6文字＝102px）が
+ * タブ1つぶんの幅（375pt端末で375/5＝75px）に収まらず「プロ…」と省略される。
+ * ラベル文言は変えたくないので、ここだけゴシックに落として可読性を優先する
+ * （要件定義書 12.4「可読性が必要な箇所は通常のゴシックに切り替えてよい」）。
+ *
+ * LONG_TEXT と同じく **fontFamily とセットで持つ。**
+ * サイズだけ取り出してドット絵フォントに12pxを当てると、にじみが起きる。
+ *
+ * サイズが10pxなのは、React Navigation がタブボタン内側に5pxのパディングを持っており
+ * （`tabBarItemStyle` では上書きできない）、375pt端末で使える幅が65pxしかないため。
+ * 全角6文字を収めるには10pxが要る。iOSの標準タブラベルも10ptなので、慣習からも外れない。
+ *
+ * ドット絵アイコンができてラベルを短くできたら、17pxのドット絵フォントに戻すことを検討する。
+ */
+export const TAB_LABEL = {
+  fontFamily: FONT_FAMILY.gothic,
+  fontSize: 10,
+} as const;
+
 export const LONG_TEXT = {
   fontFamily: FONT_FAMILY.gothic,
   fontSize: 15,
@@ -237,6 +282,12 @@ export const LAYOUT = {
   badgeSize: SPACING.lg + SPACING.xs,
   /** 木枠の四隅に置く金具の大きさ。 */
   frameCornerSize: SPACING.sm,
+  /**
+   * 下部タブバーの高さ。
+   * React Navigation は `tabBarIcon` が null を返してもアイコン枠を確保するため、
+   * 「アイコン枠 + ラベル」が収まる高さが要る。低すぎるとラベルが潰れて読めなくなる。
+   */
+  tabBarHeight: SPACING.xxl * 2,
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -246,6 +297,7 @@ export const theme = {
   colors: COLORS,
   scheduleKind: SCHEDULE_KIND,
   attendanceStatus: ATTENDANCE_STATUS,
+  answerBadge: ANSWER_BADGE,
   spacing: SPACING,
   fontSize: FONT_SIZE,
   longText: LONG_TEXT,
