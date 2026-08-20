@@ -51,7 +51,7 @@
 - [x] `src/types/index.ts`（データモデル）
 - [x] `src/constants/theme.ts`（色・余白・フォントサイズ）
 - [x] DotGothic16の読み込みと `src/components/app-text.tsx`（既定フォントの適用）
-- [ ] `src/data/dummy.ts`（ダミーデータ）
+- [x] `src/data/dummy.ts`（ダミーデータ）
 - [ ] `src/components/pixel/*`（ドット絵UI部品）
 - [ ] S0 月カレンダー画面
 
@@ -153,6 +153,7 @@ Expo SDK 57 のデフォルトテンプレートに合わせ、アプリコー�
     │   └── pixel/             # ドット絵の基本部品（枠・ボタン・アイコン等）
     ├── constants/             # theme.ts（色・余白・フォントサイズ）など不変の定数
     ├── data/                  # P0のダミーデータ。P1でlib/のSupabase呼び出しに差し替える
+    │   └── dummy.ts           # 2026年8月のダミー。取得はgetter関数経由（同期）
     ├── lib/                   # 日付計算・締切逆算・ステータス判定などのロジック
     └── types/                 # データモデル（index.ts）
 ```
@@ -203,7 +204,22 @@ P1でSupabaseのスキーマを作るときに必ず対応すること。
 - あわせて、親子の `team_id` 一致を保証する制約（親テーブルに `UNIQUE(id, team_id)` を張り、
   子から複合外部キーで参照する）も検討する。トリガーより強く、DBレベルで不整合を防げる。
 
-### 5.2 その他
+### 5.2 データ取得関数の async 化
+
+`src/data/dummy.ts` の取得関数は**同期**（`getProjects(): Project[]`）で作ってある。
+P0を最短で組むための判断で、Supabaseに差し替える時点で必ず作業が発生する。
+
+- **やること:** `getProjects()` / `getStreams()` / `getMembers()` / `getAvailabilities()` などを
+  `Promise` を返す形に変え、**呼び出し側すべてに loading / error 処理を足す。**
+  P0の時点では画面が状態を持たずに直接配列を読んでいるため、この追加は避けられない。
+- **対象:** カレンダー画面（S0）をはじめ、`src/data/dummy.ts` を import している全ファイル。
+  着手前に `grep -rn "data/dummy" src/` で洗い出すこと。
+- **ついでにやること:** 取得関数の置き場所を `src/data/` から `src/lib/` に移す。
+  `src/data/` はP0のダミー専用で、P1では役目が終わる。
+- エラー時の表示（再読み込みボタンなど）の共通部品もこのタイミングで決める。
+  4人しか使わないので、凝ったリトライは不要。
+
+### 5.3 その他
 
 - 全テーブルに `team_id` を持たせる。RLSは `team_id` 単位で分離する。
 - `profiles.id` は `auth.users.id` と同じUUIDにする（アプリ側の型名は `Member`。マッピングは `src/types/index.ts` のコメント参照）。
