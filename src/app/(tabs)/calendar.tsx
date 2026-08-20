@@ -33,7 +33,7 @@ import {
   type ScheduleEvent,
 } from '@/lib/schedule';
 
-/** S0 カレンダー。月表示のみ。週表示・選択日の予定リストは後のフェーズ。 */
+/** S0 カレンダー。月表示のみ。週表示への切り替えは後のフェーズ（要件定義書 F6）。 */
 export default function CalendarScreen() {
   const todayKey = useMemo(() => dateToKey(new Date()), []);
   const currentMonth = useMemo<YearMonth>(() => {
