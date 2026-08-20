@@ -31,7 +31,11 @@ yarn-error.*
 *.pem
 
 # local env files
+# .env そのものも必ず除外する。EXPO_PUBLIC_SUPABASE_ANON_KEY を置くため
+# （要件定義書 第8章「APIキーは環境変数、リポジトリに含めない」）
+.env
 .env*.local
+!.env.example
 
 # typescript
 *.tsbuildinfo
