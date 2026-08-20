@@ -1,10 +1,12 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+
+import { Text } from '@/components/app-text';
+import { BORDER_WIDTH, COLORS, FONT_SIZE, SPACING } from '@/constants/theme';
 
 /**
  * P0の暫定ホーム。起動確認用のプレースホルダ。
- * 次のステップで constants/theme.ts と data/dummy.ts を作り、
- * この画面を月カレンダー（S0）に置き換える。
+ * 次のステップで data/dummy.ts を作り、この画面を月カレンダー（S0）に置き換える。
  */
 export default function IndexScreen() {
   return (
@@ -19,18 +21,27 @@ export default function IndexScreen() {
   );
 }
 
-// 仮のスタイル。borderRadius は使わない（要件定義書 12.1）。
-// 正式な色・余白・フォントサイズは constants/theme.ts に集約する。
+// borderRadius は使わない（CLAUDE.md §3.1）。値はすべて theme.ts から読む。
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#EDE0C8' },
-  container: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 16 },
-  frame: {
-    borderWidth: 4,
-    borderColor: '#5C4433',
-    backgroundColor: '#F5EBD8',
-    paddingVertical: 24,
-    paddingHorizontal: 32,
+  safeArea: { flex: 1, backgroundColor: COLORS.background },
+  container: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: SPACING.lg,
   },
-  title: { fontSize: 24, color: '#3A2A1C', textAlign: 'center' },
-  body: { fontSize: 16, color: '#5C4433', textAlign: 'center', marginTop: 16 },
+  frame: {
+    borderWidth: BORDER_WIDTH.thick,
+    borderColor: COLORS.frameDark,
+    backgroundColor: COLORS.surface,
+    paddingVertical: SPACING.xl,
+    paddingHorizontal: SPACING.xxl,
+  },
+  title: { fontSize: FONT_SIZE.title, textAlign: 'center' },
+  body: {
+    fontSize: FONT_SIZE.body,
+    color: COLORS.textMuted,
+    textAlign: 'center',
+    marginTop: SPACING.lg,
+  },
 });
