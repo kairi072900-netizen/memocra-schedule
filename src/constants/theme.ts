@@ -29,6 +29,7 @@ const palette = {
   blue: '#2F6FB5',
   yellow: '#D9A407',
   gray: '#7A7A7A',
+  brown: '#8A5A2B',
   white: '#FFFFFF',
 } as const;
 
@@ -61,6 +62,14 @@ export const COLORS = {
   textMuted: palette.inkMuted,
   /** 濃色の面に乗せる文字色。 */
   textOnDark: palette.white,
+  /**
+   * 曜日ヘッダーの「日」「土」だけに使う。
+   *
+   * 一般的な日曜赤・土曜青は、予定種別の赤（ロング公開）・青（撮影）と意味が衝突するため使わない
+   * （CLAUDE.md §3.4）。木枠と同じ茶系にして、予定の4色（赤/紫/緑/青）と色相が被らないようにしている。
+   * **セルの背景には色を敷かないこと。** 文字色だけに留める。
+   */
+  textWeekend: palette.brown,
 } as const;
 
 export type ColorToken = keyof typeof COLORS;
@@ -211,6 +220,25 @@ export const BORDER_WIDTH = {
 
 export type BorderWidthToken = keyof typeof BORDER_WIDTH;
 
+/**
+ * レイアウトの分岐点とサイズ。画面側に数値をベタ書きしないためにここへ集約する。
+ */
+export const LAYOUT = {
+  /**
+   * カレンダーのセル幅がこれ未満なら、文字を捨ててドット表示に切り替える。
+   * モバイルでセルに文字を入れようとしないこと（要件定義書 12.3）。
+   */
+  compactCellWidth: 56,
+  /** カレンダーのセルの高さ。6行固定なので月が変わっても高さは動かない。 */
+  calendarCellHeight: SPACING.xxl * 2,
+  /** 予定ドット1つぶんの大きさ。1マス=1情報の正方形（要件定義書 12.1）。 */
+  dotSize: SPACING.sm,
+  /** 出欠バッジ。記号を FONT_SIZE.body で描くので、それが収まる大きさにする。 */
+  badgeSize: SPACING.lg + SPACING.xs,
+  /** 木枠の四隅に置く金具の大きさ。 */
+  frameCornerSize: SPACING.sm,
+} as const;
+
 // ---------------------------------------------------------------------------
 
 /** まとめて渡したいときに使う。個別importでも同じものが取れる。 */
@@ -223,4 +251,5 @@ export const theme = {
   longText: LONG_TEXT,
   borderWidth: BORDER_WIDTH,
   fontFamily: FONT_FAMILY,
+  layout: LAYOUT,
 } as const;
