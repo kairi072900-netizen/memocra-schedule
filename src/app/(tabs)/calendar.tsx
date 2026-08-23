@@ -1,7 +1,8 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { FlatList, Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { ErrorView, LoadingView } from '@/components/async-state';
 import { Text } from '@/components/app-text';
 import { EventCard } from '@/components/event-card';
 import { PixelFrame } from '@/components/pixel/frame';
@@ -14,7 +15,8 @@ import {
   SCHEDULE_KIND,
   SPACING,
 } from '@/constants/theme';
-import { getAvailabilities, getMembers, getProjects, getStreams } from '@/data/dummy';
+import { getAvailabilities, getMembers, getStreams } from '@/data/dummy';
+import { getProjects } from '@/lib/api';
 import {
   addMonths,
   buildMonthGrid,
@@ -32,6 +34,7 @@ import {
   resolveMemberAnswers,
   type ScheduleEvent,
 } from '@/lib/schedule';
+import type { Project } from '@/types';
 
 /** S0 カレンダー。月表示のみ。週表示への切り替えは後のフェーズ（要件定義書 F6）。 */
 export default function CalendarScreen() {
@@ -61,19 +64,37 @@ export default function CalendarScreen() {
     setSelectedDate(cell.date);
   };
 
-  // P1でSupabaseに差し替えると、この辺りがasyncになり loading/error 処理が要る（CLAUDE.md §5.2）
+  // streams / members / availabilities は移行中につき、引き続き data/dummy.ts から同期で読む。
+  // projects だけ Supabase（lib/api.ts）に切り替えた（CLAUDE.md §5.2）
   const members = useMemo(() => getMembers(), []);
   const availabilities = useMemo(() => getAvailabilities(), []);
+  const streams = useMemo(() => getStreams(), []);
+
+  const [projects, setProjects] = useState<Project[] | null>(null);
+  const [projectsError, setProjectsError] = useState<string | null>(null);
+
+  const loadProjects = useCallback(() => {
+    setProjectsError(null);
+    setProjects(null);
+    getProjects()
+      .then(setProjects)
+      .catch((e: Error) => setProjectsError(e.message));
+  }, []);
+
+  useEffect(() => {
+    loadProjects();
+  }, [loadProjects]);
 
   const eventsByDate = useMemo(() => {
+    if (!projects) return {};
     const events = buildScheduleEvents({
-      projects: getProjects(),
-      streams: getStreams(),
+      projects,
+      streams,
       availabilities,
       memberCount: members.length,
     });
     return groupEventsByDate(events);
-  }, [availabilities, members]);
+  }, [projects, streams, availabilities, members]);
 
   const selectedEvents = selectedDate ? (eventsByDate[selectedDate] ?? []) : [];
 
@@ -121,50 +142,56 @@ export default function CalendarScreen() {
         ))}
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollBody}>
-        <FlatList
-          data={cells}
-          numColumns={DAYS_IN_WEEK}
-          scrollEnabled={false}
-          keyExtractor={(cell) => cell.date}
-          style={styles.grid}
-          renderItem={({ item }) => (
-            <DayCell
-              cell={item}
-              width={cellWidth}
-              compact={compact}
-              selected={item.date === selectedDate}
-              onPress={handleSelectDate}
-              events={item.isCurrentMonth ? (eventsByDate[item.date] ?? []) : []}
-            />
-          )}
-        />
+      {projectsError ? (
+        <ErrorView message={projectsError} onRetry={loadProjects} />
+      ) : !projects ? (
+        <LoadingView label="予定を読み込み中…" />
+      ) : (
+        <ScrollView contentContainerStyle={styles.scrollBody}>
+          <FlatList
+            data={cells}
+            numColumns={DAYS_IN_WEEK}
+            scrollEnabled={false}
+            keyExtractor={(cell) => cell.date}
+            style={styles.grid}
+            renderItem={({ item }) => (
+              <DayCell
+                cell={item}
+                width={cellWidth}
+                compact={compact}
+                selected={item.date === selectedDate}
+                onPress={handleSelectDate}
+                events={item.isCurrentMonth ? (eventsByDate[item.date] ?? []) : []}
+              />
+            )}
+          />
 
-        <View style={styles.selectedSection}>
-          {selectedDate === null ? (
-            <Text style={styles.hint}>日付をタップすると、その日の予定が出ます</Text>
-          ) : (
-            <>
-              <Text style={styles.selectedHeading}>{formatDateHeading(selectedDate)}</Text>
-              {selectedEvents.length === 0 ? (
-                <Text style={styles.hint}>予定はありません</Text>
-              ) : (
-                selectedEvents.map((e) => (
-                  <EventCard
-                    key={e.id}
-                    event={e}
-                    memberAnswers={
-                      e.stream_id
-                        ? resolveMemberAnswers(members, availabilities, e.stream_id)
-                        : undefined
-                    }
-                  />
-                ))
-              )}
-            </>
-          )}
-        </View>
-      </ScrollView>
+          <View style={styles.selectedSection}>
+            {selectedDate === null ? (
+              <Text style={styles.hint}>日付をタップすると、その日の予定が出ます</Text>
+            ) : (
+              <>
+                <Text style={styles.selectedHeading}>{formatDateHeading(selectedDate)}</Text>
+                {selectedEvents.length === 0 ? (
+                  <Text style={styles.hint}>予定はありません</Text>
+                ) : (
+                  selectedEvents.map((e) => (
+                    <EventCard
+                      key={e.id}
+                      event={e}
+                      memberAnswers={
+                        e.stream_id
+                          ? resolveMemberAnswers(members, availabilities, e.stream_id)
+                          : undefined
+                      }
+                    />
+                  ))
+                )}
+              </>
+            )}
+          </View>
+        </ScrollView>
+      )}
     </SafeAreaView>
   );
 }

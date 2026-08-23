@@ -52,10 +52,13 @@ P0（ダミーデータでカレンダーUI）は完了。残っているのは
 
 - [x] `@supabase/supabase-js` の導入と `src/lib/supabase.ts`（`.env` から接続情報を読む）
 - [x] `supabase/migrations/0001_init.sql`（6テーブル・トリガー・暫定ポリシー）
-- [ ] **SQLをSupabaseのSQL Editorで実行する**（手作業。Claude Codeからは実行できない）
+- [x] SQLをSupabaseのSQL Editorで実行する
+- [x] `src/lib/api.ts` を新設し、`getProjects()` をSupabase接続 + asyncに切り替え（§5.2）
+      呼び出し側（S0）に loading / error 表示を追加（`src/components/async-state.tsx`）
+- [ ] streams / availabilities / members も同様に切り替える（この順で進める）
+- [ ] 切り替え完了後、`src/data/dummy.ts` を削除し `src/data/` ごと片付ける
 - [ ] 認証（メールOTP）とセッション永続化（AsyncStorage）
 - [ ] RLSの有効化と正式なポリシー
-- [ ] データ取得関数のasync化（§5.2）
 
 ### P0の進捗
 
@@ -224,14 +227,16 @@ Expo SDK 57 のデフォルトテンプレートに合わせ、アプリコー�
     │       └── notifications.tsx
     ├── components/            # 表示専用のUI部品。データ取得を書かない
     │   ├── app-text.tsx       # 既定フォント付きText。RNのTextを直接使わない
+    │   ├── async-state.tsx    # 読み込み中/失敗時の共通表示（LoadingView / ErrorView）
     │   ├── coming-soon.tsx    # 未実装タブの「準備中」表示
     │   ├── event-card.tsx     # 選択日の予定カード
     │   └── pixel/             # ドット絵の基本部品（枠・ボタン・アイコン等）
     │       └── frame.tsx      # 木枠。四隅の金具＋辺のborderWidth
     ├── constants/             # theme.ts（色・余白・フォントサイズ）など不変の定数
-    ├── data/                  # P0のダミーデータ。P1でlib/のSupabase呼び出しに差し替える
-    │   └── dummy.ts           # 2026年8月のダミー。取得はgetter関数経由（同期）
+    ├── data/                  # P0のダミーデータ。移行中はここに残った関数だけ使う
+    │   └── dummy.ts           # streams / availabilities / members が対象。取得は同期
     ├── lib/                   # 日付計算・締切逆算・ステータス判定などのロジック
+    │   ├── api.ts             # Supabaseから読む取得関数。P1の移行先。すべてasync
     │   ├── calendar.ts        # 42セルのグリッド計算。6行固定
     │   ├── schedule.ts        # 3ソースのマージと出欠の集約
     │   └── supabase.ts        # Supabaseクライアント。接続情報は .env から読む
