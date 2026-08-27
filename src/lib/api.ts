@@ -1,15 +1,13 @@
 import { supabase } from '@/lib/supabase';
-import type { Availability, Project, Stream } from '@/types';
+import type { Availability, Member, Project, Stream } from '@/types';
 
 /**
- * Supabase から読む取得関数。**P1で `src/data/dummy.ts` を置き換えていく先。**
+ * Supabase から読む取得関数。
  *
- * `src/data/` と違い、ここの関数はすべて非同期。呼び出し側は
- * loading / error を自分で持つ必要がある（CLAUDE.md §5.2）。
+ * すべて非同期。呼び出し側は loading / error を自分で持つ必要がある（CLAUDE.md §5.2）。
  *
- * 段階移行中: projects → streams → availabilities → members の順に切り替える。
- * 切り替えていないデータは引き続き `src/data/dummy.ts` から読む。
- * 全テーブルの移行が終わったら `src/data/` ごと削除する。
+ * P0時代の `src/data/dummy.ts`（ダミーデータを同期で返す形）は、
+ * projects → streams → availabilities → members の順に全関数をここへ移し終えたため削除済み。
  */
 
 /**
@@ -64,6 +62,22 @@ export async function getAvailabilities(): Promise<Availability[]> {
 
   if (error) {
     throw new Error(`出欠の取得に失敗しました: ${error.message}`);
+  }
+  return data;
+}
+
+/**
+ * メンバー一覧を取得する。
+ *
+ * `Member` の全列が `members` テーブルの列と1対1で対応しているため、
+ * 変換層は挟まない（`getProjects()` と同じ考え方）。
+ * 日時のような自然な並び順の列が無いため、`order()` は指定しない。
+ */
+export async function getMembers(): Promise<Member[]> {
+  const { data, error } = await supabase.from('members').select('*');
+
+  if (error) {
+    throw new Error(`メンバーの取得に失敗しました: ${error.message}`);
   }
   return data;
 }

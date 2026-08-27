@@ -15,8 +15,7 @@ import {
   SCHEDULE_KIND,
   SPACING,
 } from '@/constants/theme';
-import { getMembers } from '@/data/dummy';
-import { getAvailabilities, getProjects, getStreams } from '@/lib/api';
+import { getAvailabilities, getMembers, getProjects, getStreams } from '@/lib/api';
 import {
   addMonths,
   buildMonthGrid,
@@ -34,7 +33,7 @@ import {
   resolveMemberAnswers,
   type ScheduleEvent,
 } from '@/lib/schedule';
-import type { Availability, Project, Stream } from '@/types';
+import type { Availability, Member, Project, Stream } from '@/types';
 
 /** S0 カレンダー。月表示のみ。週表示への切り替えは後のフェーズ（要件定義書 F6）。 */
 export default function CalendarScreen() {
@@ -64,9 +63,17 @@ export default function CalendarScreen() {
     setSelectedDate(cell.date);
   };
 
-  // members は移行中につき、引き続き data/dummy.ts から同期で読む。
-  // projects / streams / availabilities は Supabase（lib/api.ts）に切り替えた（CLAUDE.md §5.2）
-  const members = useMemo(() => getMembers(), []);
+  // 4種類すべて Supabase（lib/api.ts）に切り替え済み（CLAUDE.md §5.2）
+  const [members, setMembers] = useState<Member[] | null>(null);
+  const [membersError, setMembersError] = useState<string | null>(null);
+
+  const loadMembers = useCallback(() => {
+    setMembersError(null);
+    setMembers(null);
+    getMembers()
+      .then(setMembers)
+      .catch((e: Error) => setMembersError(e.message));
+  }, []);
 
   const [projects, setProjects] = useState<Project[] | null>(null);
   const [projectsError, setProjectsError] = useState<string | null>(null);
@@ -105,19 +112,21 @@ export default function CalendarScreen() {
     loadProjects();
     loadStreams();
     loadAvailabilities();
-  }, [loadProjects, loadStreams, loadAvailabilities]);
+    loadMembers();
+  }, [loadProjects, loadStreams, loadAvailabilities, loadMembers]);
 
-  // projects / streams / availabilities のいずれかが失敗したら1枚のエラーカードにまとめる。
+  // projects / streams / availabilities / members のいずれかが失敗したら1枚のエラーカードにまとめる。
   // 4人しか使わないアプリで、失敗の理由ごとにカードを分けるほどの必要はない（CLAUDE.md §5.2）
-  const loadError = projectsError ?? streamsError ?? availabilitiesError;
+  const loadError = projectsError ?? streamsError ?? availabilitiesError ?? membersError;
   const retryAll = () => {
     loadProjects();
     loadStreams();
     loadAvailabilities();
+    loadMembers();
   };
 
   const eventsByDate = useMemo(() => {
-    if (!projects || !streams || !availabilities) return {};
+    if (!projects || !streams || !availabilities || !members) return {};
     const events = buildScheduleEvents({
       projects,
       streams,
@@ -175,7 +184,7 @@ export default function CalendarScreen() {
 
       {loadError ? (
         <ErrorView message={loadError} onRetry={retryAll} />
-      ) : !projects || !streams || !availabilities ? (
+      ) : !projects || !streams || !availabilities || !members ? (
         <LoadingView label="予定を読み込み中…" />
       ) : (
         <ScrollView contentContainerStyle={styles.scrollBody}>
