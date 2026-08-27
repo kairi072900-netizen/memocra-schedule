@@ -16,6 +16,7 @@ import {
   SPACING,
 } from '@/constants/theme';
 import { getAvailabilities, getMembers, getProjects, getStreams } from '@/lib/api';
+import { supabase } from '@/lib/supabase';
 import {
   addMonths,
   buildMonthGrid,
@@ -164,6 +165,10 @@ export default function CalendarScreen() {
           />
           <NavButton label="次月 ▶" onPress={() => goToMonth(addMonths(cursor, 1))} />
         </View>
+        {/* 設定画面がまだ無いための暫定的な導線。動作確認・アカウント切り替え用 */}
+        <Text style={styles.signOut} onPress={() => supabase.auth.signOut()}>
+          ログアウト
+        </Text>
       </PixelFrame>
 
       <View style={styles.weekdayRow}>
@@ -339,6 +344,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: SPACING.sm,
   },
   navLabel: { fontSize: FONT_SIZE.body },
+  signOut: {
+    fontSize: FONT_SIZE.body,
+    color: COLORS.textMuted,
+    textAlign: 'center',
+    marginTop: SPACING.sm,
+  },
 
   weekdayRow: { flexDirection: 'row', paddingHorizontal: SPACING.sm },
   weekdayCell: { alignItems: 'center', paddingVertical: SPACING.xs },

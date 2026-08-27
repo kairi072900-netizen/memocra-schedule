@@ -1,4 +1,9 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createClient } from '@supabase/supabase-js';
+import { AppState, Platform } from 'react-native';
+// Supabase-js は内部で URL を扱うが、React Native の JS エンジンには
+// 完全な URL 実装が無い。ポリフィルを読み込むだけでよく、呼び出しはしない。
+import 'react-native-url-polyfill/auto';
 
 /**
  * Supabase クライアント。
@@ -27,12 +32,36 @@ if (!supabaseUrl || !supabaseAnonKey) {
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
-    // 【次のプロンプトで変更する】
-    // セッションの永続化には AsyncStorage の設定が要る。認証と同時に入れる。
-    // 今は保存先が無いまま persistSession を有効にしても壊れるだけなので切っておく。
-    persistSession: false,
-    autoRefreshToken: false,
+    // ログイン状態を端末に保存する。次に開いたときも再ログイン不要にするため。
+    //
+    // web だけは AsyncStorage を渡さない。このプロジェクトの web 出力は
+    // Expo Router の static rendering（Node上でのサーバーレンダリング）を経由するが、
+    // AsyncStorageのweb実装は `window.localStorage` を直接叩くため、
+    // window が存在しないNode環境で「window is not defined」で落ちる。
+    // supabase-js は storage を渡さなければブラウザ判定つきの既定実装
+    // （非ブラウザ環境では安全に何もしない）にフォールバックするため、
+    // web はそちらに任せる。
+    storage: Platform.OS === 'web' ? undefined : AsyncStorage,
+    persistSession: true,
+    autoRefreshToken: true,
     // URLからセッションを拾うのはWeb用の挙動。React Nativeでは使わない
     detectSessionInUrl: false,
+    // Googleログインの戻り先URLには token ではなく code だけを含める（PKCE方式）。
+    // React Nativeでは戻り先URLの断片（#access_token=...）を手で解析するより確実
+    flowType: 'pkce',
   },
+});
+
+/**
+ * アプリがバックグラウンドにいる間はトークンの自動更新を止め、
+ * フォアグラウンドに戻ったら再開する（Supabase公式の推奨パターン）。
+ * これを呼ばないと、バックグラウンドで期限切れになったトークンが
+ * 復帰後も更新されない場合がある。
+ */
+AppState.addEventListener('change', (state) => {
+  if (state === 'active') {
+    supabase.auth.startAutoRefresh();
+  } else {
+    supabase.auth.stopAutoRefresh();
+  }
 });

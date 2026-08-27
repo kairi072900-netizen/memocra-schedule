@@ -137,7 +137,7 @@ create table public.availabilities (
   constraint availabilities_stream_member_key unique (stream_id, member_id),
 
   -- 【P2で再検討】配信を削除すると、メンバー本人が入力した回答も無警告で消える。
-  -- 削除UIを作るときに確認ダイアログの要否を決める（CLAUDE.md §5.4）
+  -- 削除UIを作るときに確認ダイアログの要否を決める（CLAUDE.md §5.5）
   constraint availabilities_stream_fkey foreign key (stream_id, team_id)
     references public.streams(id, team_id) on delete cascade
 );
