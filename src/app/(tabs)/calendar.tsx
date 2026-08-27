@@ -15,8 +15,8 @@ import {
   SCHEDULE_KIND,
   SPACING,
 } from '@/constants/theme';
-import { getAvailabilities, getMembers, getStreams } from '@/data/dummy';
-import { getProjects } from '@/lib/api';
+import { getAvailabilities, getMembers } from '@/data/dummy';
+import { getProjects, getStreams } from '@/lib/api';
 import {
   addMonths,
   buildMonthGrid,
@@ -34,7 +34,7 @@ import {
   resolveMemberAnswers,
   type ScheduleEvent,
 } from '@/lib/schedule';
-import type { Project } from '@/types';
+import type { Project, Stream } from '@/types';
 
 /** S0 カレンダー。月表示のみ。週表示への切り替えは後のフェーズ（要件定義書 F6）。 */
 export default function CalendarScreen() {
@@ -64,11 +64,10 @@ export default function CalendarScreen() {
     setSelectedDate(cell.date);
   };
 
-  // streams / members / availabilities は移行中につき、引き続き data/dummy.ts から同期で読む。
-  // projects だけ Supabase（lib/api.ts）に切り替えた（CLAUDE.md §5.2）
+  // members / availabilities は移行中につき、引き続き data/dummy.ts から同期で読む。
+  // projects と streams は Supabase（lib/api.ts）に切り替えた（CLAUDE.md §5.2）
   const members = useMemo(() => getMembers(), []);
   const availabilities = useMemo(() => getAvailabilities(), []);
-  const streams = useMemo(() => getStreams(), []);
 
   const [projects, setProjects] = useState<Project[] | null>(null);
   const [projectsError, setProjectsError] = useState<string | null>(null);
@@ -81,12 +80,32 @@ export default function CalendarScreen() {
       .catch((e: Error) => setProjectsError(e.message));
   }, []);
 
+  const [streams, setStreams] = useState<Stream[] | null>(null);
+  const [streamsError, setStreamsError] = useState<string | null>(null);
+
+  const loadStreams = useCallback(() => {
+    setStreamsError(null);
+    setStreams(null);
+    getStreams()
+      .then(setStreams)
+      .catch((e: Error) => setStreamsError(e.message));
+  }, []);
+
   useEffect(() => {
     loadProjects();
-  }, [loadProjects]);
+    loadStreams();
+  }, [loadProjects, loadStreams]);
+
+  // projects と streams、どちらかが失敗したら1枚のエラーカードにまとめる。
+  // 4人しか使わないアプリで、失敗の理由ごとにカードを分けるほどの必要はない（CLAUDE.md §5.2）
+  const loadError = projectsError ?? streamsError;
+  const retryAll = () => {
+    loadProjects();
+    loadStreams();
+  };
 
   const eventsByDate = useMemo(() => {
-    if (!projects) return {};
+    if (!projects || !streams) return {};
     const events = buildScheduleEvents({
       projects,
       streams,
@@ -142,9 +161,9 @@ export default function CalendarScreen() {
         ))}
       </View>
 
-      {projectsError ? (
-        <ErrorView message={projectsError} onRetry={loadProjects} />
-      ) : !projects ? (
+      {loadError ? (
+        <ErrorView message={loadError} onRetry={retryAll} />
+      ) : !projects || !streams ? (
         <LoadingView label="予定を読み込み中…" />
       ) : (
         <ScrollView contentContainerStyle={styles.scrollBody}>

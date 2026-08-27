@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/supabase';
-import type { Project } from '@/types';
+import type { Project, Stream } from '@/types';
 
 /**
  * Supabase から読む取得関数。**P1で `src/data/dummy.ts` を置き換えていく先。**
@@ -26,6 +26,24 @@ export async function getProjects(): Promise<Project[]> {
 
   if (error) {
     throw new Error(`プロジェクトの取得に失敗しました: ${error.message}`);
+  }
+  return data;
+}
+
+/**
+ * 配信予定一覧を取得する。
+ *
+ * `Stream` の全列が `streams` テーブルの列と1対1で対応しているため、
+ * 変換層は挟まない（`getProjects()` と同じ考え方）。
+ */
+export async function getStreams(): Promise<Stream[]> {
+  const { data, error } = await supabase
+    .from('streams')
+    .select('*')
+    .order('starts_at', { ascending: true });
+
+  if (error) {
+    throw new Error(`配信予定の取得に失敗しました: ${error.message}`);
   }
   return data;
 }
