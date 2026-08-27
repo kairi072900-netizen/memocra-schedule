@@ -57,7 +57,9 @@ P0（ダミーデータでカレンダーUI）は完了。残っているのは
       呼び出し側（S0）に loading / error 表示を追加（`src/components/async-state.tsx`）
 - [x] `getStreams()` も同様にSupabase接続 + asyncに切り替え
       S0のエラー表示は projects / streams をまとめて1枚のカードにしている
-- [ ] availabilities / members も同様に切り替える（この順で進める）
+- [x] `getAvailabilities()` も同様にSupabase接続 + asyncに切り替え
+      エラーカードは projects / streams / availabilities の3つをまとめている
+- [ ] members も同様に切り替える（これで移行対象は最後の1つ）
 - [ ] 切り替え完了後、`src/data/dummy.ts` を削除し `src/data/` ごと片付ける
 - [ ] 認証（メールOTP）とセッション永続化（AsyncStorage）
 - [ ] RLSの有効化と正式なポリシー

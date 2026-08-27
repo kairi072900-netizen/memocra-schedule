@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/supabase';
-import type { Project, Stream } from '@/types';
+import type { Availability, Project, Stream } from '@/types';
 
 /**
  * Supabase から読む取得関数。**P1で `src/data/dummy.ts` を置き換えていく先。**
@@ -44,6 +44,26 @@ export async function getStreams(): Promise<Stream[]> {
 
   if (error) {
     throw new Error(`配信予定の取得に失敗しました: ${error.message}`);
+  }
+  return data;
+}
+
+/**
+ * 出欠回答一覧を取得する。
+ *
+ * `Availability` の全列が `availabilities` テーブルの列と1対1で対応しているため、
+ * 変換層は挟まない（`getProjects()` と同じ考え方）。
+ * 未回答のメンバーはレコードが存在しないので、この結果には含まれない
+ * （要件定義書 第7章）。集約や個人回答の解決は `src/lib/schedule.ts` 側で行う。
+ */
+export async function getAvailabilities(): Promise<Availability[]> {
+  const { data, error } = await supabase
+    .from('availabilities')
+    .select('*')
+    .order('answered_at', { ascending: true });
+
+  if (error) {
+    throw new Error(`出欠の取得に失敗しました: ${error.message}`);
   }
   return data;
 }
