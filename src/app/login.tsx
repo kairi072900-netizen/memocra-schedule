@@ -14,9 +14,9 @@ import { supabase } from '@/lib/supabase';
  * ログイン画面。**Googleアカウントでのログインのみ**（要件定義書はメールOTPだったが、
  * ユーザーの指示によりGoogleに変更した。CLAUDE.md §5.3 参照）。
  *
- * 「けん / らてん / 南場テル / ゆず」のメールアドレスだけがログインできる。
- * 制限はDB側のトリガーで行っている（`supabase/migrations/0002_auth.sql`）ため、
- * ここでは拒否されたときのエラー表示だけを担当する。
+ * Googleアカウントであれば誰でもログイン自体はできる。「けん / らてん / 南場テル / ゆず」
+ * だけがアプリの中に入れるようにする制限は、ログイン後の合言葉入力（`src/app/claim.tsx`）
+ * の方で行っている（`supabase/migrations/0002_auth.sql` の `claim_membership`）。
  */
 export default function LoginScreen() {
   const [loading, setLoading] = useState(false);
@@ -52,13 +52,10 @@ export default function LoginScreen() {
 
       const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
       if (exchangeError) {
-        // 許可リストに無いメールで拒否された場合もここに来る
-        // （supabase/migrations/0002_auth.sql の reject_unknown_email トリガー）
-        throw new Error(
-          'このメールアドレスは登録されていません。管理者に確認してください。',
-        );
+        throw new Error(exchangeError.message);
       }
-      // 成功時は onAuthStateChange（src/app/_layout.tsx）が検知してタブ画面へ切り替わる
+      // 成功時は useSession（src/lib/auth.ts）が検知して claim 画面へ切り替わる。
+      // メンバー未登録（合言葉が済んでいない）なら claim.tsx、済んでいれば (tabs) へ進む
     } catch (e) {
       setError(e instanceof Error ? e.message : 'ログインに失敗しました');
     } finally {
