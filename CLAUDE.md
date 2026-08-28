@@ -379,11 +379,15 @@ P0を最短で組むための判断で、Supabaseに差し替える時点で作�
 
 **web / ネイティブでログインの往復方式が違う（2026-08-28）。**
 - **web**: `signInWithOAuth` のフルページ遷移で Google へ飛び、`/login-callback` に戻る。
-  戻り URL の `?code=` は `supabase.ts` の `detectSessionInUrl`（web で true）が自動交換する。
-  繋ぎ表示は `src/app/login-callback.tsx`（8秒で戻らなければログイン画面へフォールバック）。
+  `src/app/login-callback.tsx` が戻り URL の `?code=` を読んで `exchangeCodeForSession` を
+  自前で呼ぶ（10秒で戻らなければ・失敗すればログイン画面へフォールバックし、失敗時は
+  Supabase のエラー文言をそのまま表示）。
 - **native**: `expo-web-browser` の `openAuthSessionAsync` で開き、戻り URL を受け取って
-  `exchangeCodeForSession` を自前で呼ぶ（web には戻り値の横取りが無いため方式を分けた）。
-- 両方 `flowType: 'pkce'`。code verifier は storage に入るのでフルページ遷移でも復元できる。
+  `exchangeCodeForSession` を自前で呼ぶ。
+- `supabase.ts` の `detectSessionInUrl` は web / native とも **false**（自動処理と手動交換が
+  二重になり「code 使用済み」で失敗するのを防ぐ）。
+- 両方 `flowType: 'pkce'`。code verifier は storage（web は localStorage）に入るので
+  フルページ遷移でも復元できる。
 - **web の戻り先 `<origin>/login-callback` は Supabase の Redirect URLs に登録が必要**
   （`http://localhost:8081/login-callback` と本番 Vercel ドメイン）。
 
