@@ -65,7 +65,9 @@ P0（ダミーデータでカレンダーUI）は完了。残っているのは
 - [x] 認証（**Googleログインのみ**。要件定義書のメールOTPから変更。§5.3参照）と
       セッション永続化（AsyncStorage、ただしwebはSSR対応のため既定実装に委ねる）
 - [x] OAuth同意画面を**本番公開**する方針に決定（2026-08-28）。公開に必須の
-      ホームページ／プライバシーポリシーURLは **GitHub Pages（`docs/`）** で用意（§5.3）
+      ホームページ／プライバシーポリシーURLは **GitHub Pages（`docs/`）** で用意・公開済み（§5.3）
+      `https://kairi072900-netizen.github.io/memocra-schedule/`。
+      残: Google Cloud Consoleのブランディングに上記URLを入力し本番公開へ切り替え（ユーザー作業）
 - [ ] RLSの有効化と正式なポリシー
 
 ### P0の進捗
@@ -377,8 +379,9 @@ webはそちらに任せている。ログインの出し分けは `expo-router`
 （`docs/index.html` / `docs/privacy-policy.html`）。公開URLは
 `https://<ユーザー名>.github.io/memocra-schedule/`。
 アプリ内の入場制限は引き続き合言葉（`claim.tsx`）に一本化。Googleは認証のみ担当。
-`docs/privacy-policy.html` の連絡先は `TODO-CONTACT-EMAIL` プレースホルダーのままなので、
-**公開前に実アドレスへ置換すること**（`grep -rn TODO-CONTACT-EMAIL docs/` で検知できる）。
+`docs/privacy-policy.html` の連絡先は実アドレス（`umi547303@gmail.com`、メモクラ用の
+新規Gmail）に差し替え済み。公開URLは
+`https://kairi072900-netizen.github.io/memocra-schedule/`（GitHub Pages・`main`/`docs`）。
 
 **私には確認できないこと。** Google Cloud ConsoleでのOAuthクライアント作成、Supabase Dashboard
 でのGoogleプロバイダ設定、GitHubリポジトリ作成とPages有効化、同意画面のブランディング設定と
