@@ -7,50 +7,69 @@ import { Text } from '@/components/app-text';
 import { ErrorView, LoadingView } from '@/components/async-state';
 import { COLORS, FONT_SIZE, SPACING } from '@/constants/theme';
 import { useSession } from '@/lib/auth';
+import { supabase } from '@/lib/supabase';
 
 /**
  * web で Google ログインから戻ってくる先。
  *
  * web は `signInWithOAuth` のフルページ遷移で Google へ行き、
- * `<redirectTo>/login-callback?code=...` に戻ってくる（`src/app/login.tsx` の web 分岐）。
- * `supabase.ts` の `detectSessionInUrl`（web で true）が URL の code を自動で
- * セッションに交換し、`useSession` の `onAuthStateChange` がそれを拾う。
+ * `<origin>/login-callback?code=...` に戻ってくる（`src/app/login.tsx` の web 分岐）。
+ * ここで戻り URL の `code` を `exchangeCodeForSession` に渡してセッションを張る
+ * （`supabase.ts` の `detectSessionInUrl` は false。自動処理と二重にしない）。
  *
- * ここは交換が終わるまでの繋ぎ表示だけを持つ:
- *   - セッションが張れたら `/`（→ `_layout.tsx` が合言葉画面かタブ画面へ振り分ける）
- *   - URL に `error=` が付いていた／一定時間セッションが張れなければ、ログイン画面へ戻す
+ *   - 交換成功 → `useSession` がセッションを検知 → `/`（`_layout.tsx` が合言葉/タブへ振り分け）
+ *   - 交換失敗 or URL に `error=` → 原因の文言を出し、「もう一度」でログイン画面へ
  *
  * ネイティブは通常このルートに来ない（`WebBrowser` が戻り URL を横取りする）。
- * 来ても同じ挙動で無害。
  */
-const FALLBACK_MS = 8000;
+const FALLBACK_MS = 10000;
 
-function urlError(): string | null {
+function readParam(name: string): string | null {
   if (typeof window === 'undefined') return null;
-  const params = new URLSearchParams(window.location.search);
+  const search = new URLSearchParams(window.location.search);
   const hash = new URLSearchParams(window.location.hash.replace(/^#/, ''));
-  const desc = params.get('error_description') ?? hash.get('error_description');
-  const code = params.get('error') ?? hash.get('error');
-  if (desc) return desc;
-  if (code) return code;
-  return null;
+  return search.get(name) ?? hash.get(name);
+}
+
+function initialError(): string | null {
+  const desc = readParam('error_description');
+  const code = readParam('error');
+  return desc ?? code ?? null;
 }
 
 export default function LoginCallbackScreen() {
   const { session } = useSession();
+  const [error, setError] = useState<string | null>(initialError);
   const [gaveUp, setGaveUp] = useState(false);
-  const [error] = useState<string | null>(urlError);
 
   useEffect(() => {
-    if (session) return;
+    if (initialError()) return; // 交換以前に Google/Supabase 側で失敗している
+
+    const code = readParam('code');
+    if (!code) {
+      setError('ログインの応答に認証コードが含まれていませんでした');
+      return;
+    }
+
+    let cancelled = false;
+    supabase.auth.exchangeCodeForSession(code).then(({ error: exchangeError }) => {
+      if (cancelled) return;
+      if (exchangeError) setError(exchangeError.message);
+      // 成功時は onAuthStateChange 経由で useSession がセッションを拾い、下の Redirect が走る
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (session || error) return;
     const timer = setTimeout(() => setGaveUp(true), FALLBACK_MS);
     return () => clearTimeout(timer);
-  }, [session]);
+  }, [session, error]);
 
-  // セッションが張れた: 通常フローへ戻す
   if (session) return <Redirect href="/" />;
 
-  // 認証エラー、またはタイムアウト: ログイン画面へ戻す
   if (error || gaveUp) {
     return (
       <SafeAreaView style={styles.safeArea}>
@@ -61,7 +80,9 @@ export default function LoginCallbackScreen() {
               if (typeof window !== 'undefined') window.location.replace('/login');
             }}
           />
-          <Text style={styles.hint}>数秒待っても切り替わらない場合は「もう一度試す」を押してください</Text>
+          <Text style={styles.hint}>
+            切り替わらない場合は「もう一度試す」を押してログインからやり直してください
+          </Text>
         </View>
       </SafeAreaView>
     );

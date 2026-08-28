@@ -41,10 +41,10 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     storage: Platform.OS === 'web' ? undefined : AsyncStorage,
     persistSession: true,
     autoRefreshToken: true,
-    // web は Google から `/login-callback?code=...` にフルページ遷移で戻るので、
-    // supabase-js に URL の code を自動で処理・交換させる。ネイティブは
-    // `WebBrowser` で戻り URL を受け取り自前で exchangeCodeForSession するため false。
-    detectSessionInUrl: Platform.OS === 'web',
+    // web / native とも、戻り URL の code は画面側で自前で exchangeCodeForSession する
+    // （web=`src/app/login-callback.tsx`、native=`src/app/login.tsx`）。
+    // 自動処理を有効にすると手動交換と二重になり「code 使用済み」で失敗するため false。
+    detectSessionInUrl: false,
     // 戻り先 URL には token ではなく code だけを含める（PKCE 方式）。
     // code verifier は storage（web は localStorage）に入るので、フルページ遷移でも復元できる。
     flowType: 'pkce',
