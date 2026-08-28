@@ -41,7 +41,8 @@ P0（ダミーデータでカレンダーUI）は完了。残っているのは
 | P0 | 画面設計・ダミーデータでカレンダーUI（ローカル状態） | 完了（実機確認のみ保留） |
 | **P1** | **Supabase接続 + 認証 + RLS（members / projects / streams）** | **← 今ここ** |
 | P2 | 配信の出欠機能（availabilities） | |
-| P3 | 実機配布・メモクラで試用開始（**最優先で迎えるマイルストーン**） | |
+| P3 | **web アプリを Vercel に配布・メモクラで試用開始**（**最優先で迎えるマイルストーン**。
+       当面 web 先行、ネイティブ配布は将来。§7.1 / §5.3） | |
 | P4 | プッシュ通知（出欠依頼・リマインド） | |
 | P5 | タスク管理 + テンプレート自動生成 + 締切逆算 | |
 | P6 | 負荷ダッシュボード | |
@@ -64,10 +65,14 @@ P0（ダミーデータでカレンダーUI）は完了。残っているのは
 - [x] `src/data/dummy.ts` を削除し `src/data/` ごと片付けた
 - [x] 認証（**Googleログインのみ**。要件定義書のメールOTPから変更。§5.3参照）と
       セッション永続化（AsyncStorage、ただしwebはSSR対応のため既定実装に委ねる）
-- [x] OAuth同意画面を**本番公開**する方針に決定（2026-08-28）。公開に必須の
-      ホームページ／プライバシーポリシーURLは **GitHub Pages（`docs/`）** で用意・公開済み（§5.3）
-      `https://kairi072900-netizen.github.io/memocra-schedule/`。
-      残: Google Cloud Consoleのブランディングに上記URLを入力し本番公開へ切り替え（ユーザー作業）
+- [x] OAuth同意画面を**本番公開**（2026-08-28）。公開に必須のホームページ／プライバシー
+      ポリシーURLは **GitHub Pages（`docs/`）** で用意・公開済み（§5.3）
+      `https://kairi072900-netizen.github.io/memocra-schedule/`。ブランディング入力・本番切替も完了
+- [x] **web 先行の方針に変更**（2026-08-28、§7.1 / §5.3）。`app.json` の web 出力を
+      `static` → `single`（SPA）。web の Google ログインを `/login-callback` +
+      `detectSessionInUrl` で成立させ（`src/app/login-callback.tsx` 新規、`login.tsx` を
+      Platform 分岐）、`vercel.json` を追加。**残: Vercel デプロイ、Supabase の Redirect URLs
+      に `/login-callback` 登録、web でのログイン往復の実確認（ユーザー作業）**
 - [ ] RLSの有効化と正式なポリシー
 
 ### P0の進捗
@@ -219,12 +224,13 @@ Expo SDK 57 のデフォルトテンプレートに合わせ、アプリコー�
 ├── CLAUDE.md                  # このファイル。開発ルール
 ├── メモクラ_..._要件定義書_v0.4.md  # 仕様の出典。編集しない
 ├── app.json / package.json / tsconfig.json
+├── vercel.json                # web(SPA)を Vercel にデプロイする設定。`expo export -p web` → dist/
 ├── .env                       # 接続情報。**gitignore済み。コミット禁止**
 ├── .env.example               # キー名だけのテンプレ。これはコミットする
 ├── assets/                    # 画像。ドット絵は表示サイズちょうどで書き出す
-├── docs/                      # GitHub Pagesで公開する静的ページ。OAuth同意画面の
-│   ├── index.html             # 本番公開に必要なホームページ／プライバシーポリシー用
-│   ├── privacy-policy.html    # 連絡先は公開前に実アドレスへ要置換（TODO-CONTACT-EMAIL）
+├── docs/                      # GitHub Pagesで公開する静的ページ（OAuth同意画面の
+│   ├── index.html             # ホームページ／プライバシーポリシーURL用。アプリ本体ではない）
+│   ├── privacy-policy.html    # 連絡先 umi547303@gmail.com（差し替え済み）
 │   └── .nojekyll
 ├── supabase/
 │   └── migrations/
@@ -234,7 +240,8 @@ Expo SDK 57 のデフォルトテンプレートに合わせ、アプリコー�
     ├── app/                   # Expo Router。ルーティングと画面の組み立てのみ
     │   ├── _layout.tsx        # フォント読み込みとログイン状態でのStack出し分け
     │   ├── index.tsx          # /calendar へのリダイレクトのみ（ログイン後にのみ見える）
-    │   ├── login.tsx          # ログイン画面（Googleのみ）。未ログイン時はここだけ見える
+    │   ├── login.tsx          # ログイン画面（Googleのみ）。web/nativeでOAuth往復方式を分岐
+    │   ├── login-callback.tsx # web で Google から戻る先。detectSessionInUrl の繋ぎ表示（§5.3）
     │   ├── claim.tsx          # 合言葉入力画面。ログイン済みだがmembers行が無い人だけ見える
     │   └── (tabs)/            # 下部タブバー（ホーム/プロジェクト/＋/出欠/お知らせ）
     │       ├── _layout.tsx
@@ -363,14 +370,22 @@ P0を最短で組むための判断で、Supabaseに差し替える時点で作�
   出し分けられる（`_layout.tsx` と2箇所で同じ状態を参照するため、フックに切り出した）。
 
 **アプリ側。** `src/lib/supabase.ts` で `persistSession: true` / `autoRefreshToken: true` にし、
-ネイティブでは `AsyncStorage` にセッションを保存する。**web だけは `storage` を渡さない。**
-このプロジェクトの web 出力は Expo Router の static rendering（Node上でのサーバーレンダリング）を
-経由するが、AsyncStorageのweb実装は `window.localStorage` を直接叩くため、windowが存在しない
-Node環境で `window is not defined` になる。supabase-js は `storage` を渡さなければ
-ブラウザ判定つきの既定実装（非ブラウザ環境では安全に何もしない）にフォールバックするため、
-webはそちらに任せている。ログインの出し分けは `expo-router` の `Stack.Protected`（このバージョンの
-`expo-router` に実装済みであることをソースで確認した）。**未宣言のルートは保護の対象外になる**
-ため、ログイン後に見せたい `(tabs)` は明示的に `Stack.Screen` として書くこと。
+ネイティブでは `AsyncStorage`、web は supabase-js 既定の localStorage にセッションを保存する
+（`storage` を web で渡さない）。web 出力は `output: "single"`（SPA）で Node プリレンダリングを
+経由しないため、かつて `static` で起きた `window is not defined` は発生しない。
+ログインの出し分けは `expo-router` の `Stack.Protected`。**未宣言のルートは保護の対象外になる**
+ため、ログイン後に見せたい `(tabs)` は明示的に `Stack.Screen` として書くこと
+（`login-callback` は逆に未宣言のまま＝常時アクセス可にしている）。
+
+**web / ネイティブでログインの往復方式が違う（2026-08-28）。**
+- **web**: `signInWithOAuth` のフルページ遷移で Google へ飛び、`/login-callback` に戻る。
+  戻り URL の `?code=` は `supabase.ts` の `detectSessionInUrl`（web で true）が自動交換する。
+  繋ぎ表示は `src/app/login-callback.tsx`（8秒で戻らなければログイン画面へフォールバック）。
+- **native**: `expo-web-browser` の `openAuthSessionAsync` で開き、戻り URL を受け取って
+  `exchangeCodeForSession` を自前で呼ぶ（web には戻り値の横取りが無いため方式を分けた）。
+- 両方 `flowType: 'pkce'`。code verifier は storage に入るのでフルページ遷移でも復元できる。
+- **web の戻り先 `<origin>/login-callback` は Supabase の Redirect URLs に登録が必要**
+  （`http://localhost:8081/login-callback` と本番 Vercel ドメイン）。
 
 **OAuth同意画面は本番公開する（2026-08-28 決定）。** テストユーザー方式に戻すと
 4人ぶんのGoogleアドレス収集が必要になり、合言葉方式に変えた意味が無くなるため。
@@ -460,17 +475,18 @@ Expo Goでの動作確認は従来のドット絵フォント確認と同じ理�
 - **対応: Expo Go がSDK 57に対応したタイミングで改めて実機確認する。**
   そこで読みにくければ `FONT_SIZE` とセルの高さを見直す（17の整数倍から選ぶこと、§3.1）。
 
-**P3（実機配布）への影響:**
-要件定義書 第9章は「実機配布もExpo Goで可能」としているが、
-SDK 57 と Expo Go のバージョンがずれている間はこの前提が崩れる。P3の前に次のどちらかを決める。
+**P3（配布）の方針（2026-08-28 決定）: web アプリ先行。**
+要件定義書 第9章は「ネイティブアプリを Expo Go で配布」を前提にしていたが、
+Expo Go の SDK 57 非対応に加え、Google ログインの戻りディープリンクも Expo Go では
+通らない見込み。iOS 開発ビルドは Xcode（このMacに未インストール、Command Line Tools のみ）
+または有料 Apple Developer 登録が要る。
 
-1. Expo Go の対応を待つ（対応後はそのまま配布できる）
-2. **開発ビルド（development build / EAS Build）に切り替える。**
-   Expo Go のSDK対応に依存しなくなるが、iOSはXcode、AndroidはAndroid Studioが要る。
-   なお現在このMacには**Xcode本体が入っていない**（Command Line Toolsのみ）ため、
-   iOSの開発ビルドやシミュレータを使うなら Xcode のインストールが先に必要。
+→ **当面は Expo の web 出力（`output: "single"` の SPA）を Vercel にデプロイし、
+4人は iPhone Safari / PC ブラウザで使う。** コードは Expo 共通のまま維持するので、
+将来ネイティブ（iOS/Android 開発ビルド or ストア配布）に展開できる。
+web 版で Google ログイン往復を確認するのが P1 完了・P3 着手の実質的な条件。
 
-P3は「最優先で迎えるマイルストーン」なので、**P1に入る前にどちらで行くかを決めておくこと。**
+ドット絵フォントの実機ラスタライズ確認は、ネイティブ展開時に改めて行う（web では別問題）。
 
 ---
 
