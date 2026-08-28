@@ -1,7 +1,7 @@
 import * as Linking from 'expo-linking';
 import * as WebBrowser from 'expo-web-browser';
 import { useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Text } from '@/components/app-text';
@@ -14,9 +14,16 @@ import { supabase } from '@/lib/supabase';
  * ログイン画面。**Googleアカウントでのログインのみ**（要件定義書はメールOTPだったが、
  * ユーザーの指示によりGoogleに変更した。CLAUDE.md §5.3 参照）。
  *
- * Googleアカウントであれば誰でもログイン自体はできる。「けん / らてん / 南場テル / ゆず」
- * だけがアプリの中に入れるようにする制限は、ログイン後の合言葉入力（`src/app/claim.tsx`）
- * の方で行っている（`supabase/migrations/0002_auth.sql` の `claim_membership`）。
+ * Googleアカウントであれば誰でもログイン自体はできる。メンバー限定にする制限は
+ * ログイン後の合言葉入力（`src/app/claim.tsx`）で行っている
+ * （`supabase/migrations/0002_auth.sql` の `claim_membership`）。
+ *
+ * ログインの往復は web とネイティブで方式が違う:
+ *   - web: `signInWithOAuth` のフルページ遷移で Google へ飛び、`/login-callback` に戻る。
+ *     戻り URL の `?code=` は `supabase.ts` の `detectSessionInUrl`（web で true）が
+ *     自動でセッションに交換する。繋ぎ表示は `src/app/login-callback.tsx`。
+ *   - native: `WebBrowser` の在アプリブラウザで開き、戻り URL を受け取って
+ *     `exchangeCodeForSession` を自前で呼ぶ（web には `WebBrowser` の戻り値横取りが無い）。
  */
 export default function LoginScreen() {
   const [loading, setLoading] = useState(false);
@@ -26,8 +33,22 @@ export default function LoginScreen() {
     setError(null);
     setLoading(true);
     try {
-      // アプリに戻ってくるためのURL。scheme は app.json の "memocra" から作られる
+      // アプリに戻ってくるためのURL。web は origin + /login-callback、
+      // native は scheme（app.json の "memocra"）から作られる
       const redirectTo = Linking.createURL('login-callback');
+
+      if (Platform.OS === 'web') {
+        // web: フルページ遷移で Google へ。成功時はこの後ブラウザが遷移するので戻らない。
+        // 戻り先 /login-callback で detectSessionInUrl がセッションを張る。
+        const { error: oauthError } = await supabase.auth.signInWithOAuth({
+          provider: 'google',
+          options: { redirectTo },
+        });
+        if (oauthError) {
+          throw new Error(oauthError.message);
+        }
+        return;
+      }
 
       const { data, error: oauthError } = await supabase.auth.signInWithOAuth({
         provider: 'google',

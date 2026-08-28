@@ -34,20 +34,19 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     // ログイン状態を端末に保存する。次に開いたときも再ログイン不要にするため。
     //
-    // web だけは AsyncStorage を渡さない。このプロジェクトの web 出力は
-    // Expo Router の static rendering（Node上でのサーバーレンダリング）を経由するが、
-    // AsyncStorageのweb実装は `window.localStorage` を直接叩くため、
-    // window が存在しないNode環境で「window is not defined」で落ちる。
-    // supabase-js は storage を渡さなければブラウザ判定つきの既定実装
-    // （非ブラウザ環境では安全に何もしない）にフォールバックするため、
-    // web はそちらに任せる。
+    // web だけは AsyncStorage を渡さない。web は supabase-js 既定の localStorage 実装に任せる
+    // （非ブラウザ環境では安全に何もしないブラウザ判定つき）。
+    // web 出力は `output: "single"`（SPA）で Node 上のプリレンダリングを経由しないため、
+    // かつて `static` で起きた「window is not defined」は発生しない。
     storage: Platform.OS === 'web' ? undefined : AsyncStorage,
     persistSession: true,
     autoRefreshToken: true,
-    // URLからセッションを拾うのはWeb用の挙動。React Nativeでは使わない
-    detectSessionInUrl: false,
-    // Googleログインの戻り先URLには token ではなく code だけを含める（PKCE方式）。
-    // React Nativeでは戻り先URLの断片（#access_token=...）を手で解析するより確実
+    // web は Google から `/login-callback?code=...` にフルページ遷移で戻るので、
+    // supabase-js に URL の code を自動で処理・交換させる。ネイティブは
+    // `WebBrowser` で戻り URL を受け取り自前で exchangeCodeForSession するため false。
+    detectSessionInUrl: Platform.OS === 'web',
+    // 戻り先 URL には token ではなく code だけを含める（PKCE 方式）。
+    // code verifier は storage（web は localStorage）に入るので、フルページ遷移でも復元できる。
     flowType: 'pkce',
   },
 });
