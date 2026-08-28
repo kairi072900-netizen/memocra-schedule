@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>プライバシーポリシー | メモクラ スケジュール管理アプリ</title>
+  <style>
+    :root { color-scheme: light dark; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Hiragino Sans",
+        "Noto Sans JP", Meiryo, sans-serif;
+      line-height: 1.8;
+      margin: 0;
+      padding: 2rem 1.25rem 4rem;
+      max-width: 720px;
+      margin-inline: auto;
+      color: #1c1c1c;
+      background: #fbf7ee;
+    }
+    @media (prefers-color-scheme: dark) {
+      body { color: #e8e8e8; background: #1a1a1a; }
+      a { color: #6cb6ff; }
+    }
+    h1 { font-size: 1.5rem; }
+    h2 { font-size: 1.1rem; margin-top: 2.25rem; }
+    ul { padding-left: 1.25rem; }
+    .meta { color: #888; font-size: 0.9rem; }
+    footer { margin-top: 3rem; font-size: 0.85rem; color: #888; }
+  </style>
+</head>
+<body>
+  <h1>プライバシーポリシー</h1>
+  <p class="meta">メモクラ スケジュール管理アプリ（以下「本アプリ」）</p>
+  <p class="meta">制定日: 2026年8月28日</p>
+
+  <p>
+    本アプリは、少人数のグループで動画制作スケジュールを共有するために提供されます。
+    本ポリシーは、本アプリが取り扱う利用者の情報について定めます。
+  </p>
+
+  <h2>1. 取得する情報</h2>
+  <p>本アプリは、Google アカウントによるログイン時に、以下の情報を取得します。</p>
+  <ul>
+    <li>Google アカウントのメールアドレス</li>
+    <li>Google アカウントの表示名（プロフィール名）</li>
+  </ul>
+  <p>
+    これらは Google OAuth の <code>email</code> および <code>profile</code>
+    スコープを通じて取得されます。連絡先・カレンダー・ドライブなど、その他の
+    Google サービスのデータにはアクセスしません。
+  </p>
+
+  <h2>2. 利用目的</h2>
+  <ul>
+    <li>本アプリ内での利用者の識別およびログイン状態の維持</li>
+    <li>グループ内でのスケジュール・担当・出欠情報の表示</li>
+  </ul>
+
+  <h2>3. 保存先</h2>
+  <p>
+    取得した情報およびアプリ内で入力されたスケジュール情報は、バックエンドサービスである
+    Supabase（Supabase Inc.）のデータベースに保存されます。
+  </p>
+
+  <h2>4. 第三者提供</h2>
+  <p>
+    本アプリは、法令に基づく場合を除き、取得した情報を第三者に提供・販売・共有しません。
+    広告目的での利用や、外部の分析・トラッキングサービスへの提供も行いません。
+  </p>
+
+  <h2>5. Cookie・トラッキング</h2>
+  <p>
+    本アプリはログイン状態の維持のために端末内にセッション情報を保存しますが、
+    広告や行動追跡を目的とした Cookie・トラッキング技術は使用しません。
+  </p>
+
+  <h2>6. データの削除</h2>
+  <p>
+    アカウントおよび関連データの削除を希望する場合は、下記の連絡先までご連絡ください。
+    ご本人確認のうえ、対応します。
+  </p>
+
+  <h2>7. 本ポリシーの変更</h2>
+  <p>
+    本ポリシーの内容は、必要に応じて変更されることがあります。変更した場合は、
+    本ページに変更後の内容を掲載します。
+  </p>
+
+  <h2>8. お問い合わせ</h2>
+  <!-- TODO: 公開前に新しく作った Gmail アドレスに置換すること（この文字列が残っていると grep で検知される） -->
+  <p>本アプリおよび本ポリシーに関するお問い合わせ先: TODO-CONTACT-EMAIL</p>
+
+  <footer>
+    <p><a href="./index.html">ホームに戻る</a></p>
+  </footer>
+</body>
+</html>

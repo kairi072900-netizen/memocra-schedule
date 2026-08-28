@@ -64,6 +64,8 @@ P0（ダミーデータでカレンダーUI）は完了。残っているのは
 - [x] `src/data/dummy.ts` を削除し `src/data/` ごと片付けた
 - [x] 認証（**Googleログインのみ**。要件定義書のメールOTPから変更。§5.3参照）と
       セッション永続化（AsyncStorage、ただしwebはSSR対応のため既定実装に委ねる）
+- [x] OAuth同意画面を**本番公開**する方針に決定（2026-08-28）。公開に必須の
+      ホームページ／プライバシーポリシーURLは **GitHub Pages（`docs/`）** で用意（§5.3）
 - [ ] RLSの有効化と正式なポリシー
 
 ### P0の進捗
@@ -218,6 +220,10 @@ Expo SDK 57 のデフォルトテンプレートに合わせ、アプリコー�
 ├── .env                       # 接続情報。**gitignore済み。コミット禁止**
 ├── .env.example               # キー名だけのテンプレ。これはコミットする
 ├── assets/                    # 画像。ドット絵は表示サイズちょうどで書き出す
+├── docs/                      # GitHub Pagesで公開する静的ページ。OAuth同意画面の
+│   ├── index.html             # 本番公開に必要なホームページ／プライバシーポリシー用
+│   ├── privacy-policy.html    # 連絡先は公開前に実アドレスへ要置換（TODO-CONTACT-EMAIL）
+│   └── .nojekyll
 ├── supabase/
 │   └── migrations/
 │       ├── 0001_init.sql      # 手でSQL Editorに貼って実行する。CLIは使っていない
@@ -364,8 +370,19 @@ webはそちらに任せている。ログインの出し分けは `expo-router`
 `expo-router` に実装済みであることをソースで確認した）。**未宣言のルートは保護の対象外になる**
 ため、ログイン後に見せたい `(tabs)` は明示的に `Stack.Screen` として書くこと。
 
+**OAuth同意画面は本番公開する（2026-08-28 決定）。** テストユーザー方式に戻すと
+4人ぶんのGoogleアドレス収集が必要になり、合言葉方式に変えた意味が無くなるため。
+本番公開には「アプリのホームページURL」と「プライバシーポリシーURL」が必須で、
+これを **GitHub Pages（リポジトリの `docs/` フォルダ）** で用意した
+（`docs/index.html` / `docs/privacy-policy.html`）。公開URLは
+`https://<ユーザー名>.github.io/memocra-schedule/`。
+アプリ内の入場制限は引き続き合言葉（`claim.tsx`）に一本化。Googleは認証のみ担当。
+`docs/privacy-policy.html` の連絡先は `TODO-CONTACT-EMAIL` プレースホルダーのままなので、
+**公開前に実アドレスへ置換すること**（`grep -rn TODO-CONTACT-EMAIL docs/` で検知できる）。
+
 **私には確認できないこと。** Google Cloud ConsoleでのOAuthクライアント作成、Supabase Dashboard
-でのGoogleプロバイダ設定は私にはできない。実際にGoogleでログインが最後まで成功するかどうかも、
+でのGoogleプロバイダ設定、GitHubリポジトリ作成とPages有効化、同意画面のブランディング設定と
+本番公開の切り替えは私にはできない。実際にGoogleでログインが最後まで成功するかどうかも、
 本物のGoogleアカウントでのブラウザ操作が必要なため私は検証できない。型チェック・DBトリガーの
 動作（PGliteで検証済み）・ログイン前の画面表示（未ログインならログイン画面のみ、`/calendar`や
 `/claim`へ直接アクセスしても入れないことをブラウザで確認済み。`claim.tsx` の画面自体も
