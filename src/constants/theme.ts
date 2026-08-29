@@ -161,6 +161,23 @@ export const ANSWER_BADGE = {
 export type AnswerBadgeToken = keyof typeof ANSWER_BADGE;
 
 /**
+ * 工程タスクのステータス（要件定義書 F3）。
+ *
+ * **予定種別の4色と衝突させないこと**（CLAUDE.md §3.4）。
+ * ブロック中は注意を引きたいので赤系だが、「ロング公開の赤」と紛れないよう
+ * 記号（■）を必ず併記する。完了の緑も「配信の緑」と同じ理由で記号（✓）とセットで使う。
+ */
+export const TASK_STATUS = {
+  todo: { color: palette.gray, symbol: '□', label: '未着手' },
+  doing: { color: palette.blue, symbol: '▶', label: '作業中' },
+  done: { color: palette.green, symbol: '✓', label: '完了' },
+  /** 理由の入力が必須。これが会議の議題になる（要件定義書 F3）。 */
+  blocked: { color: palette.red, symbol: '■', label: 'ブロック中' },
+} as const satisfies Record<string, Badge>;
+
+export type TaskStatusToken = keyof typeof TASK_STATUS;
+
+/**
  * 配信プラットフォームの表示名。
  * **色は持たせない。** 予定種別色（赤/紫/緑/青）や出欠色と衝突させないため、
  * プラットフォームはテキストのみで示す。

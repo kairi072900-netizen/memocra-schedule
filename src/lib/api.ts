@@ -4,9 +4,12 @@ import type {
   AvailabilityAnswer,
   Member,
   Project,
+  ProjectKind,
   Stream,
   StreamPlatform,
+  Task,
 } from '@/types';
+import type { NewTask } from '@/lib/task-template';
 
 /**
  * Supabase から読む取得関数。
@@ -85,6 +88,25 @@ export async function getMembers(): Promise<Member[]> {
 
   if (error) {
     throw new Error(`メンバーの取得に失敗しました: ${error.message}`);
+  }
+  return data;
+}
+
+/**
+ * 工程タスク一覧を取得する。
+ *
+ * プロジェクトごとに絞らず全件取る。4人ぶんの制作なので件数はたかが知れており、
+ * カレンダー・一覧・詳細が同じ配列を使い回せるほうが単純（`getProjects()` と同じ考え方）。
+ * 並びは画面側で `sort_order` を使う前提で、まず締切順に取っておく。
+ */
+export async function getTasks(): Promise<Task[]> {
+  const { data, error } = await supabase
+    .from('tasks')
+    .select('*')
+    .order('due_at', { ascending: true });
+
+  if (error) {
+    throw new Error(`タスクの取得に失敗しました: ${error.message}`);
   }
   return data;
 }
@@ -197,5 +219,100 @@ export async function clearAvailability(streamId: string): Promise<void> {
 
   if (error) {
     throw new Error(`出欠の取り消しに失敗しました: ${error.message}`);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// projects / tasks の書き込み（P5）
+//
+// tasks.team_id は set_team_id_from_parent トリガーが projects から自動セットするので
+// 送らない（CLAUDE.md §5.1）。RLS は 0003_rls.sql の tasks_team_all で同一チーム全許可。
+// ---------------------------------------------------------------------------
+
+export interface ProjectInput {
+  title: string;
+  kind: ProjectKind;
+  /** 公開予定（ISO）。工程の締切逆算の基点になる。 */
+  publish_at: string | null;
+  shoot_at: string | null;
+  memo: string | null;
+}
+
+/** 企画（動画1本）を登録する。`owner_id` は登録した人を初期値にする。 */
+export async function createProject(input: ProjectInput): Promise<Project> {
+  const owner_id = await getCurrentUserId();
+  const { data, error } = await supabase
+    .from('projects')
+    .insert({ ...input, owner_id })
+    .select()
+    .single();
+
+  if (error) {
+    throw new Error(`企画の登録に失敗しました: ${error.message}`);
+  }
+  return data;
+}
+
+export async function updateProject(id: string, patch: Partial<ProjectInput>): Promise<Project> {
+  const { data, error } = await supabase
+    .from('projects')
+    .update(patch)
+    .eq('id', id)
+    .select()
+    .single();
+
+  if (error) {
+    throw new Error(`企画の更新に失敗しました: ${error.message}`);
+  }
+  return data;
+}
+
+/**
+ * 企画を削除する。`tasks` は FK の `on delete cascade` で連鎖削除される。
+ * 呼び出し側で「工程も消える」ことを件数付きで伝えること（CLAUDE.md §5.5 と同じ作法）。
+ */
+export async function deleteProject(id: string): Promise<void> {
+  const { error } = await supabase.from('projects').delete().eq('id', id);
+  if (error) {
+    throw new Error(`企画の削除に失敗しました: ${error.message}`);
+  }
+}
+
+/**
+ * 工程タスクをまとめて登録する（テンプレート適用。11件を1回のリクエストで入れる）。
+ * 途中で失敗したときに半端な状態を残さないよう、1回の insert にしている。
+ */
+export async function createTasks(rows: NewTask[]): Promise<Task[]> {
+  if (rows.length === 0) return [];
+  const { data, error } = await supabase.from('tasks').insert(rows).select();
+
+  if (error) {
+    throw new Error(`工程の生成に失敗しました: ${error.message}`);
+  }
+  return data;
+}
+
+export type TaskPatch = Partial<
+  Pick<Task, 'title' | 'assignee_id' | 'due_at' | 'status' | 'blocked_reason' | 'done_at'>
+>;
+
+export async function updateTask(id: string, patch: TaskPatch): Promise<Task> {
+  const { data, error } = await supabase
+    .from('tasks')
+    .update(patch)
+    .eq('id', id)
+    .select()
+    .single();
+
+  if (error) {
+    throw new Error(`タスクの更新に失敗しました: ${error.message}`);
+  }
+  return data;
+}
+
+export async function deleteTask(id: string): Promise<void> {
+  const { error } = await supabase.from('tasks').delete().eq('id', id);
+  if (error) {
+    throw new Error(`タスクの削除に失敗しました: ${error.message}`);
   }
 }
