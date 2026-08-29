@@ -32,6 +32,9 @@ const palette = {
   brown: '#8A5A2B',
   white: '#FFFFFF',
   skin: '#E8B88A',
+  woodDeep: '#3B2A1E',
+  woodMid: '#4E3A2A',
+  cyan: '#3AA6A6',
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -81,6 +84,18 @@ export const COLORS = {
    * **背景色やバッジには使わないこと**（種別の赤と紛れるため）。
    */
   danger: palette.red,
+
+  /** PC用サイドバーの地。モックアップの濃い木目。 */
+  sidebar: palette.woodDeep,
+  /** サイドバーで現在地を示す面。 */
+  sidebarActive: palette.woodMid,
+
+  /**
+   * レベルのEXPバー。**加点の色**（要件定義書 12.6）。
+   * 負荷の警告色（`WORKLOAD.overloaded` の黄）と別にして、
+   * 「貯まると良いもの」と「対応が要るもの」を混同させない。
+   */
+  exp: palette.cyan,
 
   /**
    * ドット絵アバターの肌色。**全員共通**。
@@ -363,6 +378,18 @@ export const LAYOUT = {
   badgeSize: SPACING.lg + SPACING.xs,
   /** 木枠の四隅に置く金具の大きさ。 */
   frameCornerSize: SPACING.sm,
+  /**
+   * PC用サイドバーの幅。ナビのラベル（全角6文字＝ドット絵17pxで102px）と
+   * アイコン・余白が収まる最小限。
+   */
+  sidebarWidth: SPACING.xxl * 8,
+  /**
+   * この幅**以上**でサイドバーを出す。
+   * サイドバー256px を引いた残りでカレンダー（7列）がチップ表示のままでいられる幅
+   * （`compactCellWidth` 72px × 7列 + 余白）を下回らないように決めた。
+   * これ未満では下タブに戻す。
+   */
+  sidebarMinWidth: 900,
   /**
    * 下部タブバーの高さ。
    * React Navigation は `tabBarIcon` が null を返してもアイコン枠を確保するため、
