@@ -11,9 +11,12 @@ import {
   LAYOUT,
   SCHEDULE_KIND,
   SPACING,
+  TASK_STATUS,
 } from '@/constants/theme';
 import { WEEKDAY_LABELS } from '@/lib/calendar';
+import { daysUntil } from '@/lib/project-status';
 import type { MemberAnswer, ScheduleEvent } from '@/lib/schedule';
+import type { Task } from '@/types';
 
 /**
  * カレンダーの下に置く要約パネル（モックアップ下段の「今日の予定」「今週の公開予定」）。
@@ -27,17 +30,25 @@ export function ScheduleSummary({
   todayLabel,
   todayEvents,
   weekPublishEvents,
+  myTasks,
+  todayKey,
   answersOf,
   onPressEvent,
+  onPressTask,
 }: {
   /** '8月10日(月)' のような見出し。 */
   todayLabel: string;
   todayEvents: ScheduleEvent[];
   /** 今週の公開予定（ロング/ショート）。 */
   weekPublishEvents: ScheduleEvent[];
+  /** 自分が担当する未完了タスク（締切の近い順）。 */
+  myTasks: Task[];
+  /** 'YYYY-MM-DD'。締切の残日数を出すのに使う。 */
+  todayKey: string;
   /** 配信の出欠を引く。カード側はデータ取得を知らないので関数で受ける。 */
   answersOf: (streamId: string) => MemberAnswer[];
   onPressEvent: (event: ScheduleEvent) => void;
+  onPressTask: (task: Task) => void;
 }) {
   return (
     <View style={styles.container}>
@@ -58,6 +69,15 @@ export function ScheduleSummary({
           weekPublishEvents.map((e) => (
             <SummaryRow key={e.id} event={e} answersOf={answersOf} onPress={onPressEvent} showDate />
           ))
+        )}
+      </Panel>
+
+      {/* モックアップの「締切タスク（自分）」。要件定義書 S1 の一部でもある */}
+      <Panel title={`締切タスク（自分） ${myTasks.length}件`}>
+        {myTasks.length === 0 ? (
+          <Text style={styles.empty}>自分の未完了タスクはありません</Text>
+        ) : (
+          myTasks.map((t) => <TaskSummaryRow key={t.id} task={t} todayKey={todayKey} onPress={onPressTask} />)
         )}
       </Panel>
     </View>
@@ -125,6 +145,38 @@ function SummaryRow({
   );
 }
 
+function TaskSummaryRow({
+  task,
+  todayKey,
+  onPress,
+}: {
+  task: Task;
+  todayKey: string;
+  onPress: (task: Task) => void;
+}) {
+  const status = TASK_STATUS[task.status];
+  const remaining = task.due_at ? daysUntil(task.due_at, todayKey) : null;
+  const overdue = remaining !== null && remaining < 0;
+
+  return (
+    <Pressable style={styles.row} onPress={() => onPress(task)}>
+      <View style={styles.rowTop}>
+        <View style={[styles.taskBadge, { backgroundColor: status.color }]}>
+          <Text style={styles.statusSymbol}>{status.symbol}</Text>
+        </View>
+        <Text style={styles.rowKind} numberOfLines={1}>
+          {task.title}
+        </Text>
+        {remaining !== null && (
+          <Text style={[styles.rowTime, overdue && styles.overdue]}>
+            {overdue ? `${-remaining}日超過` : `あと${remaining}日`}
+          </Text>
+        )}
+      </View>
+    </Pressable>
+  );
+}
+
 // borderRadius は使わない（CLAUDE.md §3.1）。値はすべて theme.ts から読む。
 const styles = StyleSheet.create({
   container: {
@@ -161,4 +213,11 @@ const styles = StyleSheet.create({
     marginLeft: SPACING.xs,
   },
   statusSymbol: { fontSize: FONT_SIZE.body, color: COLORS.textOnDark },
+  taskBadge: {
+    width: LAYOUT.iconSize,
+    height: LAYOUT.iconSize,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  overdue: { color: COLORS.danger },
 });

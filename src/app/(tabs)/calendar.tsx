@@ -20,7 +20,8 @@ import {
   SCHEDULE_KIND,
   SPACING,
 } from '@/constants/theme';
-import { getAvailabilities, getMembers, getProjects, getStreams } from '@/lib/api';
+import { getAvailabilities, getMembers, getProjects, getStreams, getTasks } from '@/lib/api';
+import { myOpenTasks } from '@/lib/project-status';
 import { supabase } from '@/lib/supabase';
 import {
   addMonths,
@@ -40,7 +41,7 @@ import {
   resolveMemberAnswers,
   type ScheduleEvent,
 } from '@/lib/schedule';
-import type { Availability, Member, Project, Stream } from '@/types';
+import type { Availability, Member, Project, Stream, Task } from '@/types';
 
 /** S0 カレンダー。月表示のみ。週表示への切り替えは後のフェーズ（要件定義書 F6）。 */
 export default function CalendarScreen() {
@@ -113,19 +114,35 @@ export default function CalendarScreen() {
       .catch((e: Error) => setAvailabilitiesError(e.message));
   }, []);
 
+  const [tasks, setTasks] = useState<Task[] | null>(null);
+  const [tasksError, setTasksError] = useState<string | null>(null);
+
+  const loadTasks = useCallback(() => {
+    setTasksError(null);
+    getTasks()
+      .then(setTasks)
+      .catch((e: Error) => setTasksError(e.message));
+  }, []);
+
+  /** 自分のID。「締切タスク（自分）」を絞るのに使う。 */
+  const [myId, setMyId] = useState<string | null>(null);
+
   const retryAll = useCallback(() => {
     loadProjects();
     loadStreams();
     loadAvailabilities();
     loadMembers();
-  }, [loadProjects, loadStreams, loadAvailabilities, loadMembers]);
+    loadTasks();
+    supabase.auth.getSession().then(({ data }) => setMyId(data.session?.user.id ?? null));
+  }, [loadProjects, loadStreams, loadAvailabilities, loadMembers, loadTasks]);
 
   // マウント時とタブ復帰時に読み込む。別画面で配信を登録・削除・回答した結果を反映する。
   useFocusEffect(retryAll);
 
   // projects / streams / availabilities / members のいずれかが失敗したら1枚のエラーカードにまとめる。
   // 4人しか使わないアプリで、失敗の理由ごとにカードを分けるほどの必要はない（CLAUDE.md §5.2）
-  const loadError = projectsError ?? streamsError ?? availabilitiesError ?? membersError;
+  const loadError =
+    projectsError ?? streamsError ?? availabilitiesError ?? membersError ?? tasksError;
 
   const eventsByDate = useMemo(() => {
     if (!projects || !streams || !availabilities || !members) return {};
@@ -150,6 +167,8 @@ export default function CalendarScreen() {
       .filter((e) => e.kind === 'longPublish' || e.kind === 'shortPublish')
       .sort((a, b) => a.date.localeCompare(b.date));
   }, [eventsByDate, todayKey]);
+
+  const myTasks = useMemo(() => myOpenTasks(tasks ?? [], myId), [tasks, myId]);
 
   const cells = useMemo(() => buildMonthGrid(cursor, todayKey), [cursor, todayKey]);
 
@@ -286,7 +305,12 @@ export default function CalendarScreen() {
             todayLabel={formatDateHeading(todayKey)}
             todayEvents={todayEvents}
             weekPublishEvents={weekPublishEvents}
+            myTasks={myTasks}
+            todayKey={todayKey}
             answersOf={(streamId) => resolveMemberAnswers(members, availabilities, streamId)}
+            onPressTask={(t) =>
+              router.push({ pathname: '/project/[id]', params: { id: t.project_id } })
+            }
             onPressEvent={(e) => {
               if (e.stream_id) {
                 router.push({ pathname: '/stream/[id]', params: { id: e.stream_id } });
