@@ -3,6 +3,7 @@ import type {
   Availability,
   AvailabilityAnswer,
   Member,
+  Notification,
   Project,
   ProjectKind,
   Stream,
@@ -314,5 +315,64 @@ export async function deleteTask(id: string): Promise<void> {
   const { error } = await supabase.from('tasks').delete().eq('id', id);
   if (error) {
     throw new Error(`タスクの削除に失敗しました: ${error.message}`);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// メンバー自身の情報 / お知らせ
+// ---------------------------------------------------------------------------
+
+export type MyMemberPatch = Partial<Pick<Member, 'name' | 'role' | 'color' | 'active_hours'>>;
+
+/**
+ * ログイン中の自分の `members` 行を更新する。
+ *
+ * **他人の行は更新できない。** RLS の `members_update_self`（0003_rls.sql）が
+ * `id = auth.uid()` で縛っているため。他のメンバーの役割はその本人が入れる。
+ * これは制限というより、各自が自分の情報に責任を持つという設計。
+ */
+export async function updateMyMember(patch: MyMemberPatch): Promise<Member> {
+  const id = await getCurrentUserId();
+  const { data, error } = await supabase
+    .from('members')
+    .update(patch)
+    .eq('id', id)
+    .select()
+    .single();
+
+  if (error) {
+    throw new Error(`プロフィールの更新に失敗しました: ${error.message}`);
+  }
+  return data;
+}
+
+/**
+ * 自分宛てのお知らせを新しい順に取得する。
+ *
+ * **通知を発行する仕組みはまだ無い（P4）**ので、今は常に空になる。
+ * ベルのバッジと一覧を先に用意しておき、P4 で発行側を足せば動くようにしている。
+ * RLS の `notifications_select_own` により、他人宛ては最初から返らない。
+ */
+export async function getNotifications(): Promise<Notification[]> {
+  const { data, error } = await supabase
+    .from('notifications')
+    .select('*')
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    throw new Error(`お知らせの取得に失敗しました: ${error.message}`);
+  }
+  return data;
+}
+
+/** お知らせを既読にする（`read_at` を今の時刻で埋める）。 */
+export async function markNotificationRead(id: string): Promise<void> {
+  const { error } = await supabase
+    .from('notifications')
+    .update({ read_at: new Date().toISOString() })
+    .eq('id', id);
+
+  if (error) {
+    throw new Error(`既読にできませんでした: ${error.message}`);
   }
 }

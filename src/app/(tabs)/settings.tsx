@@ -1,5 +1,104 @@
-import { ComingSoon } from '@/components/coming-soon';
+import { router } from 'expo-router';
+import { useCallback, useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
-export default function Screen() {
-  return <ComingSoon title="settings" />;
+import { Text } from '@/components/app-text';
+import { PixelFrame } from '@/components/pixel/frame';
+import { BORDER_WIDTH, COLORS, FONT_SIZE, LONG_TEXT, SPACING } from '@/constants/theme';
+import { useSession } from '@/lib/auth';
+import { supabase } from '@/lib/supabase';
+
+/**
+ * 設定。**アカウントの確認とログアウト**が主目的。
+ *
+ * これまでカレンダーのヘッダーに置いていた暫定のログアウト導線を、
+ * ようやく本来の場所へ移せる。
+ *
+ * 名前・役割・識別色・活動時間帯の変更は**メンバー画面**にある
+ * （自分の `members` 行を編集する操作なので、そちらに集約した）。
+ */
+export default function SettingsScreen() {
+  const { session } = useSession();
+  const [signingOut, setSigningOut] = useState(false);
+
+  const signOut = useCallback(async () => {
+    setSigningOut(true);
+    // サインアウトすると _layout.tsx のガードがログイン画面へ切り替える
+    await supabase.auth.signOut();
+  }, []);
+
+  return (
+    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+      <ScrollView contentContainerStyle={styles.body}>
+        <PixelFrame style={styles.header}>
+          <Text style={styles.title}>設定</Text>
+        </PixelFrame>
+
+        <PixelFrame style={styles.card}>
+          <Text style={styles.sectionTitle}>アカウント</Text>
+          <Text style={styles.value}>{session?.user.email ?? '不明'}</Text>
+          <Text style={styles.hint}>Googleアカウントでログインしています</Text>
+
+          <Pressable
+            style={styles.linkRow}
+            onPress={() => router.push({ pathname: '/members' })}
+          >
+            <Text style={styles.link}>名前・役割・識別色を変える ›</Text>
+          </Pressable>
+        </PixelFrame>
+
+        <PixelFrame style={styles.card}>
+          <Text style={styles.sectionTitle}>このアプリについて</Text>
+          <Text style={styles.about}>
+            メモリークラフトの制作スケジュールを共有するためのアプリです。
+            動画1本ごとに工程・担当・締切を管理し、配信の出欠をまとめます。
+          </Text>
+        </PixelFrame>
+
+        <PixelFrame style={styles.card}>
+          <Text style={styles.sectionTitle}>ログアウト</Text>
+          <Text style={styles.hint}>
+            次に使うときは、またGoogleでログインします（合言葉の再入力は要りません）
+          </Text>
+          <View style={styles.actions}>
+            <Pressable
+              disabled={signingOut}
+              onPress={signOut}
+              style={[styles.signOutButton, signingOut && styles.disabled]}
+            >
+              <Text style={styles.buttonText}>
+                {signingOut ? 'ログアウト中…' : 'ログアウトする'}
+              </Text>
+            </Pressable>
+          </View>
+        </PixelFrame>
+      </ScrollView>
+    </SafeAreaView>
+  );
 }
+
+// borderRadius は使わない（CLAUDE.md §3.1）。値はすべて theme.ts から読む。
+const styles = StyleSheet.create({
+  safeArea: { flex: 1, backgroundColor: COLORS.background },
+  body: { padding: SPACING.sm, paddingBottom: SPACING.xxl, gap: SPACING.sm },
+  header: { padding: SPACING.sm, alignItems: 'center' },
+  title: { fontSize: FONT_SIZE.title },
+  card: { padding: SPACING.md },
+  sectionTitle: { fontSize: FONT_SIZE.body, marginBottom: SPACING.sm },
+  value: { fontSize: FONT_SIZE.body },
+  hint: { fontSize: FONT_SIZE.body, color: COLORS.textMuted, marginTop: SPACING.xs },
+  about: { ...LONG_TEXT, color: COLORS.text },
+  linkRow: { marginTop: SPACING.md },
+  link: { fontSize: FONT_SIZE.body, color: COLORS.text },
+  actions: { flexDirection: 'row', marginTop: SPACING.lg },
+  signOutButton: {
+    borderWidth: BORDER_WIDTH.normal,
+    borderColor: COLORS.frameDark,
+    backgroundColor: COLORS.surface,
+    paddingVertical: SPACING.sm,
+    paddingHorizontal: SPACING.xl,
+  },
+  disabled: { opacity: 0.5 },
+  buttonText: { fontSize: FONT_SIZE.body },
+});
