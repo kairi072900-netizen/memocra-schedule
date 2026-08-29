@@ -2,6 +2,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 
 import { Text } from '@/components/app-text';
 import { MemberAvatar, PixelIcon } from '@/components/pixel/icon';
+import { WorkloadSummary } from '@/components/workload-summary';
 import { PixelFrame } from '@/components/pixel/frame';
 import {
   ATTENDANCE_STATUS,
@@ -16,6 +17,7 @@ import {
 import { WEEKDAY_LABELS } from '@/lib/calendar';
 import { daysUntil } from '@/lib/project-status';
 import type { MemberAnswer, ScheduleEvent } from '@/lib/schedule';
+import type { MemberWorkload } from '@/lib/workload';
 import type { Task } from '@/types';
 
 /**
@@ -32,9 +34,12 @@ export function ScheduleSummary({
   weekPublishEvents,
   myTasks,
   todayKey,
+  workloads,
+  unassignedCount,
   answersOf,
   onPressEvent,
   onPressTask,
+  onPressWorkload,
 }: {
   /** '8月10日(月)' のような見出し。 */
   todayLabel: string;
@@ -45,10 +50,16 @@ export function ScheduleSummary({
   myTasks: Task[];
   /** 'YYYY-MM-DD'。締切の残日数を出すのに使う。 */
   todayKey: string;
+  /** メンバー別の負荷（要件定義書 F4）。 */
+  workloads: MemberWorkload[];
+  /** 担当が未定の未完了タスク数。 */
+  unassignedCount: number;
   /** 配信の出欠を引く。カード側はデータ取得を知らないので関数で受ける。 */
   answersOf: (streamId: string) => MemberAnswer[];
   onPressEvent: (event: ScheduleEvent) => void;
   onPressTask: (task: Task) => void;
+  /** 負荷サマリーの見出しをタップしたとき（S5 の専用画面へ）。 */
+  onPressWorkload: () => void;
 }) {
   return (
     <View style={styles.container}>
@@ -72,6 +83,11 @@ export function ScheduleSummary({
         )}
       </Panel>
 
+      {/* モックアップ下段の3枚目「負荷サマリー」。要件定義書 F4 */}
+      <Panel title="負荷サマリー" onPressTitle={onPressWorkload}>
+        <WorkloadSummary workloads={workloads} unassigned={unassignedCount} compact />
+      </Panel>
+
       {/* モックアップの「締切タスク（自分）」。要件定義書 S1 の一部でもある */}
       <Panel title={`締切タスク（自分） ${myTasks.length}件`}>
         {myTasks.length === 0 ? (
@@ -84,10 +100,26 @@ export function ScheduleSummary({
   );
 }
 
-function Panel({ title, children }: { title: string; children: React.ReactNode }) {
+function Panel({
+  title,
+  children,
+  onPressTitle,
+}: {
+  title: string;
+  children: React.ReactNode;
+  /** 渡すと見出しが「すべて見る ›」付きのタップ領域になる。 */
+  onPressTitle?: () => void;
+}) {
   return (
     <PixelFrame style={styles.panel}>
-      <Text style={styles.panelTitle}>{title}</Text>
+      {onPressTitle ? (
+        <Pressable style={styles.panelTitleRow} onPress={onPressTitle}>
+          <Text style={styles.panelTitle}>{title}</Text>
+          <Text style={styles.panelMore}>すべて見る ›</Text>
+        </Pressable>
+      ) : (
+        <Text style={styles.panelTitle}>{title}</Text>
+      )}
       {children}
     </PixelFrame>
   );
@@ -189,6 +221,8 @@ const styles = StyleSheet.create({
   // 320px 幅でも1枚が収まり、広い画面では2枚が横に並ぶ最小幅
   panel: { flexGrow: 1, flexBasis: 280, padding: SPACING.sm },
   panelTitle: { fontSize: FONT_SIZE.body, marginBottom: SPACING.sm },
+  panelTitleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  panelMore: { fontSize: FONT_SIZE.body, color: COLORS.textMuted, marginBottom: SPACING.sm },
   empty: { fontSize: FONT_SIZE.body, color: COLORS.textMuted },
   row: {
     borderTopWidth: BORDER_WIDTH.hairline,

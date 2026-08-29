@@ -75,6 +75,7 @@ function RootNav() {
           <Stack.Screen name="(tabs)" />
           <Stack.Screen name="stream/[id]" />
           <Stack.Screen name="project/[id]" />
+          <Stack.Screen name="workload" />
         </Stack.Protected>
         <Stack.Protected guard={needsClaim}>
           <Stack.Screen name="claim" />

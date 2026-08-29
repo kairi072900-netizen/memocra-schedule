@@ -21,7 +21,8 @@ import {
   SPACING,
 } from '@/constants/theme';
 import { getAvailabilities, getMembers, getProjects, getStreams, getTasks } from '@/lib/api';
-import { myOpenTasks } from '@/lib/project-status';
+import { myOpenTasks, unassignedTasks } from '@/lib/project-status';
+import { buildWorkloads } from '@/lib/workload';
 import { supabase } from '@/lib/supabase';
 import {
   addMonths,
@@ -170,6 +171,12 @@ export default function CalendarScreen() {
 
   const myTasks = useMemo(() => myOpenTasks(tasks ?? [], myId), [tasks, myId]);
 
+  // 負荷サマリー（要件定義書 F4）。tasks / members は既に読んでいるので追加の取得は不要
+  const workloads = useMemo(
+    () => (members ? buildWorkloads(tasks ?? [], members, todayKey) : []),
+    [tasks, members, todayKey],
+  );
+
   const cells = useMemo(() => buildMonthGrid(cursor, todayKey), [cursor, todayKey]);
 
   // セル幅が狭いときは文字を捨ててドット表示にする（要件定義書 12.3）
@@ -307,6 +314,9 @@ export default function CalendarScreen() {
             weekPublishEvents={weekPublishEvents}
             myTasks={myTasks}
             todayKey={todayKey}
+            workloads={workloads}
+            unassignedCount={unassignedTasks(tasks ?? []).length}
+            onPressWorkload={() => router.push('/workload')}
             answersOf={(streamId) => resolveMemberAnswers(members, availabilities, streamId)}
             onPressTask={(t) =>
               router.push({ pathname: '/project/[id]', params: { id: t.project_id } })
