@@ -384,8 +384,6 @@ export default function CalendarScreen() {
         </ScrollView>
       )}
 
-      {/* モックアップ最下部の凡例バー。狭い画面では場所を食うので出さない */}
-      {!compact && <CalendarLegend variant="footer" />}
     </SafeAreaView>
   );
 }
