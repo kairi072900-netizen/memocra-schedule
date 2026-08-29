@@ -1,13 +1,24 @@
 import type { Session } from '@supabase/supabase-js';
-import { useCallback, useEffect, useState } from 'react';
+import {
+  createContext,
+  type ReactNode,
+  useCallback,
+  useContext,
+  useEffect,
+  useState,
+} from 'react';
 
 import { supabase } from '@/lib/supabase';
 
 /**
- * ログイン状態と「メンバー登録済みか」を1箇所にまとめるフック。
+ * ログイン状態と「メンバー登録済みか」を1箇所にまとめる。
  *
  * `_layout.tsx`（画面の出し分け）と `claim.tsx`（合言葉入力後にタブ画面へ
- * 進めるようにする）の2箇所が同じ状態を参照する必要があるため、ここに切り出した。
+ * 進める）と `login-callback.tsx` が**同じ状態**を参照する必要があるため、
+ * ただのフックではなく Context にしている。
+ * 以前はフックだったが、フックは呼び出しごとに別の state を持つため、
+ * `claim.tsx` で `refreshMembership()` しても `_layout.tsx` 側が再評価されず、
+ * 合言葉を通してもリロードするまでカレンダーに進めなかった。
  *
  * ログインはできても、合言葉（`claim_membership`）を通るまでは
  * `members` 行が無い状態がありうる。その間は「ログイン済みだがメンバーではない」
@@ -23,7 +34,9 @@ export interface AuthState {
   refreshMembership: () => void;
 }
 
-export function useSession(): AuthState {
+const SessionContext = createContext<AuthState | undefined>(undefined);
+
+export function SessionProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null | undefined>(undefined);
   const [hasMembership, setHasMembership] = useState<boolean | undefined>(undefined);
 
@@ -37,7 +50,8 @@ export function useSession(): AuthState {
   }, []);
 
   const checkMembership = useCallback((userId: string) => {
-    setHasMembership(undefined);
+    // ここで undefined に戻すと、_layout.tsx が一瞬スプラッシュ/空表示に落ちる。
+    // 初期状態はもともと undefined なので、更新は結果が返ってから行う。
     supabase
       .from('members')
       .select('id')
@@ -59,5 +73,17 @@ export function useSession(): AuthState {
     if (session) checkMembership(session.user.id);
   }, [session, checkMembership]);
 
-  return { session, hasMembership, refreshMembership };
+  return (
+    <SessionContext.Provider value={{ session, hasMembership, refreshMembership }}>
+      {children}
+    </SessionContext.Provider>
+  );
+}
+
+export function useSession(): AuthState {
+  const ctx = useContext(SessionContext);
+  if (ctx === undefined) {
+    throw new Error('useSession は <SessionProvider> の中で使ってください');
+  }
+  return ctx;
 }

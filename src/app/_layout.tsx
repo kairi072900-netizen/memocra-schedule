@@ -5,7 +5,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 
 import { COLORS } from '@/constants/theme';
-import { useSession } from '@/lib/auth';
+import { SessionProvider, useSession } from '@/lib/auth';
 
 // フォント読み込みが終わるまでスプラッシュを出したままにする。
 // 先に画面を出すとOS標準フォント → ドット絵フォントの切り替わりがちらつく。
@@ -25,6 +25,16 @@ SplashScreen.preventAutoHideAsync();
  * （`supabase/migrations/0002_auth.sql` の `claim_membership` を参照）。
  */
 export default function RootLayout() {
+  // useSession() を使う子（RootNav / 各画面）が同じ状態を共有できるよう、
+  // ツリー全体を SessionProvider で包む。
+  return (
+    <SessionProvider>
+      <RootNav />
+    </SessionProvider>
+  );
+}
+
+function RootNav() {
   // キー名は FONT_FAMILY.pixel と一致させること。
   const [fontsLoaded, fontError] = useFonts({ DotGothic16_400Regular });
 

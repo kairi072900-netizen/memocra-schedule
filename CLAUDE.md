@@ -260,7 +260,8 @@ Expo SDK 57 のデフォルトテンプレートに合わせ、アプリコー�
     ├── constants/             # theme.ts（色・余白・フォントサイズ）など不変の定数
     ├── lib/                   # 日付計算・締切逆算・ステータス判定などのロジック
     │   ├── api.ts             # Supabaseから読む取得関数。P1の移行先。すべてasync
-    │   ├── auth.ts            # useSession()。ログイン状態とmembers登録状態をまとめる
+    │   ├── auth.tsx           # SessionProvider + useSession()。ログイン状態とmembers登録状態を
+    │   │                      # Context で共有（_layout と claim が同じ state を見る必要がある）
     │   ├── calendar.ts        # 42セルのグリッド計算。6行固定
     │   ├── schedule.ts        # 3ソースのマージと出欠の集約
     │   └── supabase.ts        # Supabaseクライアント。接続情報は .env から読む
@@ -365,9 +366,12 @@ P0を最短で組むための判断で、Supabaseに差し替える時点で作�
   制限方式に関係なく維持している（データの整合性の話であってアクセス制限とは別）。
 - 合言葉方式なら**メールアドレスを1件も事前登録しなくてよい**。
   LINE/Discord等で4人にまとめて伝えるだけで済み、個別に聞いて回る必要が無い。
-- アプリ側は `src/lib/auth.ts` の `useSession()` フックが、ログイン状態と
+- アプリ側は `src/lib/auth.tsx` の `SessionProvider` / `useSession()` が、ログイン状態と
   「`members` 行があるか」の両方を持つ。合言葉画面はこの2つ目の状態だけを見て
-  出し分けられる（`_layout.tsx` と2箇所で同じ状態を参照するため、フックに切り出した）。
+  出し分けられる。`_layout.tsx` / `claim.tsx` / `login-callback.tsx` が**同じ state** を
+  参照する必要があるため Context にしている（当初はフックだったが呼び出しごとに別 state になり、
+  合言葉を通しても `_layout` 側が再評価されずリロードするまでカレンダーに進めなかった。
+  2026-08-29 に Context 化して解消）。
 
 **アプリ側。** `src/lib/supabase.ts` で `persistSession: true` / `autoRefreshToken: true` にし、
 ネイティブでは `AsyncStorage`、web は supabase-js 既定の localStorage にセッションを保存する
