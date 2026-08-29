@@ -31,6 +31,7 @@ const palette = {
   gray: '#7A7A7A',
   brown: '#8A5A2B',
   white: '#FFFFFF',
+  skin: '#E8B88A',
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -70,6 +71,13 @@ export const COLORS = {
    * **セルの背景には色を敷かないこと。** 文字色だけに留める。
    */
   textWeekend: palette.brown,
+
+  /**
+   * ドット絵アバターの肌色。**全員共通**。
+   * メンバーごとの識別色は `Member.color` から読む（CLAUDE.md §3.2）。
+   * ここに置いてよいのは「誰であっても同じ」色だけ。
+   */
+  skin: palette.skin,
 } as const;
 
 export type ColorToken = keyof typeof COLORS;
@@ -285,8 +293,24 @@ export const LAYOUT = {
    * モバイルでセルに文字を入れようとしないこと（要件定義書 12.3）。
    */
   compactCellWidth: 56,
-  /** カレンダーのセルの高さ。6行固定なので月が変わっても高さは動かない。 */
+  /**
+   * カレンダーのセルの高さ。6行固定なので月が変わっても高さは動かない。
+   *
+   * ドット表示（狭い画面）とチップ表示（広い画面）で2値持つ。
+   * チップ表示だけ高くすることで、モバイルの縦の伸びを防ぐ。
+   */
   calendarCellHeight: SPACING.xxl * 2,
+  calendarCellHeightWide: SPACING.xxl * 3,
+  /** 予定チップ1つぶんの高さ。アイコン＋17pxの文字が収まる大きさ。 */
+  chipHeight: SPACING.xl,
+  /** 予定種別・タブバーのドット絵アイコン。8×8グリッドなので8の倍数にすると1ドットが整数px。 */
+  iconSize: SPACING.lg,
+  /** タブバーのアイコン。ラベルと合わせて tabBarHeight に収まる大きさ。 */
+  tabIconSize: SPACING.lg + SPACING.xs,
+  /** ヘッダーのメンバーアバター。 */
+  avatarSize: SPACING.xl,
+  /** チップの中に並べるミニアバター。 */
+  avatarSizeSmall: SPACING.md,
   /** 予定ドット1つぶんの大きさ。1マス=1情報の正方形（要件定義書 12.1）。 */
   dotSize: SPACING.sm,
   /** 出欠バッジ。記号を FONT_SIZE.body で描くので、それが収まる大きさにする。 */
