@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { router, useFocusEffect } from 'expo-router';
+import { useCallback, useMemo, useState } from 'react';
 import { FlatList, Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -68,9 +69,10 @@ export default function CalendarScreen() {
   const [members, setMembers] = useState<Member[] | null>(null);
   const [membersError, setMembersError] = useState<string | null>(null);
 
+  // 再取得時は既存データを消さない（タブ復帰のたびに画面が「読み込み中」に落ちないように）。
+  // 初期状態が null なので、最初の読み込みだけスピナーが出る。
   const loadMembers = useCallback(() => {
     setMembersError(null);
-    setMembers(null);
     getMembers()
       .then(setMembers)
       .catch((e: Error) => setMembersError(e.message));
@@ -81,7 +83,6 @@ export default function CalendarScreen() {
 
   const loadProjects = useCallback(() => {
     setProjectsError(null);
-    setProjects(null);
     getProjects()
       .then(setProjects)
       .catch((e: Error) => setProjectsError(e.message));
@@ -92,7 +93,6 @@ export default function CalendarScreen() {
 
   const loadStreams = useCallback(() => {
     setStreamsError(null);
-    setStreams(null);
     getStreams()
       .then(setStreams)
       .catch((e: Error) => setStreamsError(e.message));
@@ -103,28 +103,24 @@ export default function CalendarScreen() {
 
   const loadAvailabilities = useCallback(() => {
     setAvailabilitiesError(null);
-    setAvailabilities(null);
     getAvailabilities()
       .then(setAvailabilities)
       .catch((e: Error) => setAvailabilitiesError(e.message));
   }, []);
 
-  useEffect(() => {
+  const retryAll = useCallback(() => {
     loadProjects();
     loadStreams();
     loadAvailabilities();
     loadMembers();
   }, [loadProjects, loadStreams, loadAvailabilities, loadMembers]);
 
+  // マウント時とタブ復帰時に読み込む。別画面で配信を登録・削除・回答した結果を反映する。
+  useFocusEffect(retryAll);
+
   // projects / streams / availabilities / members のいずれかが失敗したら1枚のエラーカードにまとめる。
   // 4人しか使わないアプリで、失敗の理由ごとにカードを分けるほどの必要はない（CLAUDE.md §5.2）
   const loadError = projectsError ?? streamsError ?? availabilitiesError ?? membersError;
-  const retryAll = () => {
-    loadProjects();
-    loadStreams();
-    loadAvailabilities();
-    loadMembers();
-  };
 
   const eventsByDate = useMemo(() => {
     if (!projects || !streams || !availabilities || !members) return {};
@@ -227,6 +223,15 @@ export default function CalendarScreen() {
                       memberAnswers={
                         e.stream_id
                           ? resolveMemberAnswers(members, availabilities, e.stream_id)
+                          : undefined
+                      }
+                      onPress={
+                        e.stream_id
+                          ? () =>
+                              router.push({
+                                pathname: '/stream/[id]',
+                                params: { id: e.stream_id! },
+                              })
                           : undefined
                       }
                     />

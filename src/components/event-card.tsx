@@ -1,4 +1,4 @@
-import { StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
 import { Text } from '@/components/app-text';
 import {
@@ -20,14 +20,18 @@ import type { MemberAnswer, ScheduleEvent } from '@/lib/schedule';
 export function EventCard({
   event,
   memberAnswers,
+  onPress,
 }: {
   event: ScheduleEvent;
   memberAnswers?: MemberAnswer[];
+  /** 配信予定など、詳細画面がある予定で渡す。無ければタップ不可のまま。 */
+  onPress?: () => void;
 }) {
   const kind = SCHEDULE_KIND[event.kind];
+  const Container = onPress ? Pressable : View;
 
   return (
-    <View style={styles.card}>
+    <Container style={styles.card} onPress={onPress}>
       {/* 左端の色帯。角丸なしの硬い矩形（CLAUDE.md §3.1） */}
       <View style={[styles.kindBar, { backgroundColor: kind.color }]} />
 
@@ -65,7 +69,7 @@ export function EventCard({
           </View>
         )}
       </View>
-    </View>
+    </Container>
   );
 }
 
