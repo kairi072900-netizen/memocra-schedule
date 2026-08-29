@@ -188,6 +188,21 @@ export const TASK_STATUS = {
 export type TaskStatusToken = keyof typeof TASK_STATUS;
 
 /**
+ * 負荷の状態（要件定義書 F4 / S5）。
+ *
+ * **色だけで警告しない**（CLAUDE.md §3.4）。`overloaded` を使うときは
+ * 記号（⚠）と「全体の57%」のような数値の言葉を必ず添えること。
+ * バーの色を変えるだけでは、色覚特性や白黒印刷で意味が失われる。
+ */
+export const WORKLOAD = {
+  normal: { color: palette.blue, symbol: '▬', label: '通常' },
+  /** 1人に全体の50%以上が集中している状態（課題Aの再発）。 */
+  overloaded: { color: palette.yellow, symbol: '⚠', label: '負荷が集中' },
+} as const satisfies Record<string, Badge>;
+
+export type WorkloadToken = keyof typeof WORKLOAD;
+
+/**
  * 配信プラットフォームの表示名。
  * **色は持たせない。** 予定種別色（赤/紫/緑/青）や出欠色と衝突させないため、
  * プラットフォームはテキストのみで示す。
