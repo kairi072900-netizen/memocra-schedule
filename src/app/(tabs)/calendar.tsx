@@ -5,8 +5,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ErrorView, LoadingView } from '@/components/async-state';
 import { Text } from '@/components/app-text';
+import { CalendarLegend } from '@/components/calendar-legend';
 import { EventCard } from '@/components/event-card';
+import { MemberAvatar, PixelIcon } from '@/components/pixel/icon';
 import { PixelFrame } from '@/components/pixel/frame';
+import { ScheduleChip } from '@/components/schedule-chip';
 import {
   ATTENDANCE_STATUS,
   BORDER_WIDTH,
@@ -151,7 +154,7 @@ export default function CalendarScreen() {
           {formatMonthLabel(cursor)}
         </Text>
         <View style={styles.headerRow}>
-          <NavButton label="◀ 前月" onPress={() => goToMonth(addMonths(cursor, -1))} />
+          <NavButton label="‹" onPress={() => goToMonth(addMonths(cursor, -1))} />
           <NavButton
             label="今日"
             onPress={() => {
@@ -159,13 +162,36 @@ export default function CalendarScreen() {
               setSelectedDate(todayKey);
             }}
           />
-          <NavButton label="次月 ▶" onPress={() => goToMonth(addMonths(cursor, 1))} />
+          <NavButton label="›" onPress={() => goToMonth(addMonths(cursor, 1))} />
+          {/* 新規登録はタブにもあるが、カレンダーを見ながら足せる導線をここにも置く */}
+          <Pressable onPress={() => router.push('/new')} style={styles.primaryButton}>
+            <PixelIcon name="plus" size={LAYOUT.iconSize} color={COLORS.text} />
+            <Text style={styles.navLabel}>新規登録</Text>
+          </Pressable>
         </View>
+
+        {/* メンバー。色だけで判別させないため名前を必ず併記する（CLAUDE.md §3.4） */}
+        {members && members.length > 0 && (
+          <View style={styles.memberRow}>
+            {members.map((m) => (
+              <View key={m.id} style={styles.memberItem}>
+                <MemberAvatar member={m} size={LAYOUT.avatarSize} />
+                <Text style={styles.memberName} numberOfLines={1}>
+                  {m.name}
+                </Text>
+              </View>
+            ))}
+          </View>
+        )}
+
         {/* 設定画面がまだ無いための暫定的な導線。動作確認・アカウント切り替え用 */}
         <Text style={styles.signOut} onPress={() => supabase.auth.signOut()}>
           ログアウト
         </Text>
       </PixelFrame>
+
+      {/* 凡例は場所を食うので、セルがチップ表示になる幅のときだけ出す */}
+      {!compact && <CalendarLegend />}
 
       <View style={styles.weekdayRow}>
         {WEEKDAY_LABELS.map((label, i) => (
@@ -203,6 +229,8 @@ export default function CalendarScreen() {
                 selected={item.date === selectedDate}
                 onPress={handleSelectDate}
                 events={item.isCurrentMonth ? (eventsByDate[item.date] ?? []) : []}
+                members={members}
+                availabilities={availabilities}
               />
             )}
           />
@@ -273,6 +301,8 @@ function DayCell({
   selected,
   onPress,
   events,
+  members,
+  availabilities,
 }: {
   cell: CalendarCell;
   width: number;
@@ -280,13 +310,19 @@ function DayCell({
   selected: boolean;
   onPress: (cell: CalendarCell) => void;
   events: ScheduleEvent[];
+  members: Member[];
+  availabilities: Availability[];
 }) {
   const stream = events.find((e) => e.attendance);
 
   return (
     <Pressable
       onPress={() => onPress(cell)}
-      style={[styles.cell, { width }, selected && styles.cellSelected]}
+      style={[
+        styles.cell,
+        { width, height: compact ? LAYOUT.calendarCellHeight : LAYOUT.calendarCellHeightWide },
+        selected && styles.cellSelected,
+      ]}
     >
       {/* 今日は硬い矩形の枠で囲む。色ではなく枠なので、予定の色と衝突しない */}
       {cell.isToday && <View style={styles.todayMarker} pointerEvents="none" />}
@@ -295,8 +331,8 @@ function DayCell({
         <Text style={[styles.dayNumber, !cell.isCurrentMonth && styles.dayNumberOutside]}>
           {cell.day}
         </Text>
-        {/* 出欠バッジは色と記号を必ずセットで出す（CLAUDE.md §3.4） */}
-        {stream?.attendance && <AttendanceBadge token={stream.attendance} />}
+        {/* 狭いときはセル右上に集約バッジを出す。広いときはチップの中に入るので出さない */}
+        {compact && stream?.attendance && <AttendanceBadge token={stream.attendance} />}
       </View>
 
       {compact ? (
@@ -308,12 +344,13 @@ function DayCell({
       ) : (
         <View>
           {events.map((e) => (
-            <View key={e.id} style={styles.eventRow}>
-              <View style={[styles.dot, { backgroundColor: SCHEDULE_KIND[e.kind].color }]} />
-              <Text style={styles.eventText} numberOfLines={1}>
-                {SCHEDULE_KIND[e.kind].symbol} {e.title}
-              </Text>
-            </View>
+            <ScheduleChip
+              key={e.id}
+              event={e}
+              memberAnswers={
+                e.stream_id ? resolveMemberAnswers(members, availabilities, e.stream_id) : undefined
+              }
+            />
           ))}
         </View>
       )}
@@ -349,6 +386,25 @@ const styles = StyleSheet.create({
     paddingHorizontal: SPACING.sm,
   },
   navLabel: { fontSize: FONT_SIZE.body },
+  primaryButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.xs,
+    borderWidth: BORDER_WIDTH.normal,
+    borderColor: COLORS.frameDark,
+    backgroundColor: COLORS.surfaceSunken,
+    paddingVertical: SPACING.xs,
+    paddingHorizontal: SPACING.sm,
+  },
+  memberRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: SPACING.md,
+    marginTop: SPACING.sm,
+  },
+  memberItem: { alignItems: 'center' },
+  memberName: { fontSize: FONT_SIZE.body, color: COLORS.textMuted },
   signOut: {
     fontSize: FONT_SIZE.body,
     color: COLORS.textMuted,
@@ -367,7 +423,6 @@ const styles = StyleSheet.create({
   selectedHeading: { fontSize: FONT_SIZE.title, marginBottom: SPACING.sm },
   hint: { fontSize: FONT_SIZE.body, color: COLORS.textMuted },
   cell: {
-    height: LAYOUT.calendarCellHeight,
     borderWidth: BORDER_WIDTH.hairline,
     borderColor: COLORS.frameLight,
     backgroundColor: COLORS.surface,
