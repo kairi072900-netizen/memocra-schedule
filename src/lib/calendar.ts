@@ -107,3 +107,19 @@ export function buildMonthGrid(target: YearMonth, todayKey: string): CalendarCel
 
   return cells;
 }
+
+/**
+ * その日を含む週（日曜はじまり）の開始日と終了日を 'YYYY-MM-DD' で返す。
+ *
+ * 「今週の公開予定」のように、週の範囲で予定を絞るときに使う。
+ * 週の開始を日曜にするのは `WEEKDAY_LABELS` と同じ方針。
+ */
+export function weekRangeOf(dateKey: string): { start: string; end: string } {
+  const [y, m, d] = dateKey.split('-').map(Number);
+  const base = new Date(y, m - 1, d);
+  const start = new Date(base);
+  start.setDate(base.getDate() - base.getDay());
+  const end = new Date(start);
+  end.setDate(start.getDate() + DAYS_IN_WEEK - 1);
+  return { start: dateToKey(start), end: dateToKey(end) };
+}

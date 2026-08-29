@@ -10,6 +10,7 @@ import { EventCard } from '@/components/event-card';
 import { MemberAvatar, PixelIcon } from '@/components/pixel/icon';
 import { PixelFrame } from '@/components/pixel/frame';
 import { ScheduleChip } from '@/components/schedule-chip';
+import { ScheduleSummary } from '@/components/schedule-summary';
 import {
   ATTENDANCE_STATUS,
   BORDER_WIDTH,
@@ -29,6 +30,7 @@ import {
   dateToKey,
   formatMonthLabel,
   WEEKDAY_LABELS,
+  weekRangeOf,
   type YearMonth,
   yearMonthOf,
 } from '@/lib/calendar';
@@ -137,6 +139,17 @@ export default function CalendarScreen() {
   }, [projects, streams, availabilities, members]);
 
   const selectedEvents = selectedDate ? (eventsByDate[selectedDate] ?? []) : [];
+
+  const todayEvents = eventsByDate[todayKey] ?? [];
+  /** 今週（日〜土）の公開予定だけを日付順に。撮影・配信は「今日の予定」側で見る */
+  const weekPublishEvents = useMemo(() => {
+    const { start, end } = weekRangeOf(todayKey);
+    return Object.entries(eventsByDate)
+      .filter(([date]) => date >= start && date <= end)
+      .flatMap(([, list]) => list)
+      .filter((e) => e.kind === 'longPublish' || e.kind === 'shortPublish')
+      .sort((a, b) => a.date.localeCompare(b.date));
+  }, [eventsByDate, todayKey]);
 
   const cells = useMemo(() => buildMonthGrid(cursor, todayKey), [cursor, todayKey]);
 
@@ -268,6 +281,22 @@ export default function CalendarScreen() {
               </>
             )}
           </View>
+
+          <ScheduleSummary
+            todayLabel={formatDateHeading(todayKey)}
+            todayEvents={todayEvents}
+            weekPublishEvents={weekPublishEvents}
+            answersOf={(streamId) => resolveMemberAnswers(members, availabilities, streamId)}
+            onPressEvent={(e) => {
+              if (e.stream_id) {
+                router.push({ pathname: '/stream/[id]', params: { id: e.stream_id } });
+              } else {
+                // 企画（project）の詳細画面は P5。今は日付を選ぶところまで
+                setCursor(yearMonthOf(e.date));
+                setSelectedDate(e.date);
+              }
+            }}
+          />
         </ScrollView>
       )}
     </SafeAreaView>
