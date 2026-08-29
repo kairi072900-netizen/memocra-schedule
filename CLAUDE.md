@@ -88,7 +88,9 @@ P0（ダミーデータでカレンダーUI）は完了。ドット絵フォン�
       Google ログイン → 合言葉 → カレンダーまで PC ブラウザで到達確認済み
 - [ ] 古い Vercel プロジェクト `memocra`（`memocra.vercel.app`）の削除（誤って2つ作った。stale）
 - [ ] `members` テーブルの表示名・役割・識別色の手直し（§5.3。メンバー参加の都度）
-- [ ] RLSの有効化と正式なポリシー
+- [ ] RLSの有効化と正式なポリシー（`supabase/migrations/0003_rls.sql` 作成済み。
+      6テーブルで RLS enable、`current_team_id()`（security definer）で team_id 一致を判定、
+      `temporary_full_access` を撤去。**ユーザーが SQL Editor で 0003_rls.sql を実行する**のが残り）
 - [ ] 他の3人のログイン実確認（合言葉 `0807` を配布）
 
 ### P0の進捗
@@ -224,6 +226,10 @@ HPを負荷の指標にしてはいけない（負荷集中は個人の問題で
 - Expoの `EXPO_PUBLIC_` 付き環境変数は**バンドルに埋め込まれ、利用者から見える**。
   ここに置いてよいのは anon キーだけ。**`service_role` キーは絶対に置かない**（RLSを無視できるため）。
 - anonキーは公開前提。**データを守るのはRLSであって、キーの秘匿ではない。**
+  RLS は `0003_rls.sql` で有効化する（6テーブル・`team_id` 単位で分離。
+  判定は `current_team_id()`（security definer）。書き込みは availabilities/notifications のみ
+  本人スコープ、他は同一チームで自由。役割ベースの制限は P5 以降）。
+  Vercel の環境変数にも anon キーだけを入れる（`memocra-schedule` プロジェクト）。
 
 （P0での制約は「Supabaseクライアントを入れない／ネットワークリクエストを書かない／
 状態はローカルのみ」だった。UIの検証を先に終わらせるためで、目的は果たした）
@@ -251,7 +257,8 @@ Expo SDK 57 のデフォルトテンプレートに合わせ、アプリコー�
 ├── supabase/
 │   └── migrations/
 │       ├── 0001_init.sql      # 手でSQL Editorに貼って実行する。CLIは使っていない
-│       └── 0002_auth.sql      # 合言葉・認証トリガー。同じくSQL Editorで手動実行
+│       ├── 0002_auth.sql      # 合言葉・認証トリガー。同じくSQL Editorで手動実行
+│       └── 0003_rls.sql       # RLS有効化 + team_id単位の正式ポリシー。冪等。手動実行
 └── src/
     ├── app/                   # Expo Router。ルーティングと画面の組み立てのみ
     │   ├── _layout.tsx        # フォント読み込みとログイン状態でのStack出し分け
