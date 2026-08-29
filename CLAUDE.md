@@ -33,8 +33,12 @@
 **P1でやること: Supabase接続 + 認証 + RLS。**
 完了条件は **「4人がログインでき、予定が永続化される」** こと。
 
-P0（ダミーデータでカレンダーUI）は完了。残っているのは
-**ドット絵フォントの実機確認だけ**で、これはExpo Go側の対応待ち（§7.1）。
+進捗（2026-08-29）: Supabase 接続・**Google ログイン往復・合言葉によるメンバー登録**まで
+本番（`https://memocra-schedule.vercel.app/`）で動作確認済み。**残るは RLS の有効化**と、
+他3人のログイン確認・古い Vercel プロジェクト削除・`members` の表示名調整。
+
+P0（ダミーデータでカレンダーUI）は完了。ドット絵フォントの実機確認だけ Expo Go 待ち（§7.1）
+だが、web 先行方針のため P1/P3 のブロッカーではない。
 
 | フェーズ | 内容 | 状態 |
 |---|---|---|
@@ -69,11 +73,23 @@ P0（ダミーデータでカレンダーUI）は完了。残っているのは
       ポリシーURLは **GitHub Pages（`docs/`）** で用意・公開済み（§5.3）
       `https://kairi072900-netizen.github.io/memocra-schedule/`。ブランディング入力・本番切替も完了
 - [x] **web 先行の方針に変更**（2026-08-28、§7.1 / §5.3）。`app.json` の web 出力を
-      `static` → `single`（SPA）。web の Google ログインを `/login-callback` +
-      `detectSessionInUrl` で成立させ（`src/app/login-callback.tsx` 新規、`login.tsx` を
-      Platform 分岐）、`vercel.json` を追加。**残: Vercel デプロイ、Supabase の Redirect URLs
-      に `/login-callback` 登録、web でのログイン往復の実確認（ユーザー作業）**
+      `static` → `single`（SPA）。`vercel.json` を追加。
+- [x] **web の Google ログイン往復が本番で成立**（2026-08-29）。`src/app/login-callback.tsx`
+      が戻り URL の `?code=` を `exchangeCodeForSession` で自前交換（`detectSessionInUrl` は
+      web/native とも false）。`login.tsx` は Platform 分岐（web=フルページ遷移）。§5.3
+- [x] `supabase/migrations/0002_auth.sql` を SQL Editor で適用（`claim_membership` / `team_passcode`）。
+      合言葉は現在 `0807`（`team_passcode` テーブル・平文。§5.3）
+- [x] `src/lib/auth.tsx`（旧 `auth.ts`）を `SessionProvider`（Context）化。合言葉入力後に
+      リロード無しでカレンダーへ遷移するようになった（§5.3）
+- [x] **Vercel 本番稼働: `https://memocra-schedule.vercel.app/`**（プロジェクト名 `memocra-schedule`、
+      team `memocra`、Hobby）。GitHub push で自動デプロイ。`.env` の2値を環境変数に登録済み。
+      Supabase の Redirect URLs に `https://memocra-schedule.vercel.app/login-callback` と
+      `http://localhost:8081/login-callback`、Site URL も同ドメイン。
+      Google ログイン → 合言葉 → カレンダーまで PC ブラウザで到達確認済み
+- [ ] 古い Vercel プロジェクト `memocra`（`memocra.vercel.app`）の削除（誤って2つ作った。stale）
+- [ ] `members` テーブルの表示名・役割・識別色の手直し（§5.3。メンバー参加の都度）
 - [ ] RLSの有効化と正式なポリシー
+- [ ] 他の3人のログイン実確認（合言葉 `0807` を配布）
 
 ### P0の進捗
 
