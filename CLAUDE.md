@@ -28,14 +28,16 @@
 
 ## 2. 開発フェーズと現在地
 
-### 現在地: **P1**
+### 現在地: **P1 ほぼ完了 → P3 着手**
 
 **P1でやること: Supabase接続 + 認証 + RLS。**
 完了条件は **「4人がログインでき、予定が永続化される」** こと。
 
-進捗（2026-08-29）: Supabase 接続・**Google ログイン往復・合言葉によるメンバー登録**まで
-本番（`https://memocra-schedule.vercel.app/`）で動作確認済み。**残るは RLS の有効化**と、
-他3人のログイン確認・古い Vercel プロジェクト削除・`members` の表示名調整。
+進捗（2026-08-29）: Supabase 接続・**Google ログイン往復・合言葉によるメンバー登録・RLS 有効化**
+まで本番（`https://memocra-schedule.vercel.app/`）で完了。
+残りは運用作業のみ: 他3人のログイン確認（合言葉 `0807` 配布）、古い Vercel プロジェクト
+`memocra` の削除、`members` テーブルの表示名・色の手直し。
+コード面の P1 は完了とみなしてよい。次は P3（メモクラでの試用開始）または P2。
 
 P0（ダミーデータでカレンダーUI）は完了。ドット絵フォントの実機確認だけ Expo Go 待ち（§7.1）
 だが、web 先行方針のため P1/P3 のブロッカーではない。
@@ -88,9 +90,10 @@ P0（ダミーデータでカレンダーUI）は完了。ドット絵フォン�
       Google ログイン → 合言葉 → カレンダーまで PC ブラウザで到達確認済み
 - [ ] 古い Vercel プロジェクト `memocra`（`memocra.vercel.app`）の削除（誤って2つ作った。stale）
 - [ ] `members` テーブルの表示名・役割・識別色の手直し（§5.3。メンバー参加の都度）
-- [ ] RLSの有効化と正式なポリシー（`supabase/migrations/0003_rls.sql` 作成済み。
+- [x] **RLS の有効化と正式なポリシー完了**（2026-08-29、`supabase/migrations/0003_rls.sql`）。
       6テーブルで RLS enable、`current_team_id()`（security definer）で team_id 一致を判定、
-      `temporary_full_access` を撤去。**ユーザーが SQL Editor で 0003_rls.sql を実行する**のが残り）
+      `temporary_full_access` を撤去。SQL Editor で適用済み。
+      確認: ログイン中の自分はカレンダー表示OK / anon の REST 直叩きは全テーブル `[]`
 - [ ] 他の3人のログイン実確認（合言葉 `0807` を配布）
 
 ### P0の進捗
