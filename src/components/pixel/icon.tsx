@@ -112,6 +112,61 @@ const ICONS = {
     '..X.....',
     '........',
   ],
+  /** カレンダー。月表示のグリッド。 */
+  calendar: [
+    'XXXXXXXX',
+    'XooooooX',
+    'XXXXXXXX',
+    'XoXoXoXX',
+    'XXXXXXXX',
+    'XoXoXoXX',
+    'XXXXXXXX',
+    'XXXXXXXX',
+  ],
+  /** タスク一覧。チェックリスト。 */
+  tasks: [
+    'XX.ooooo',
+    'XXX.....',
+    'XX.ooooo',
+    'XXX.....',
+    'XX.ooooo',
+    'XXX.....',
+    'XX.ooooo',
+    '........',
+  ],
+  /** 負荷ダッシュボード。横棒グラフ。 */
+  workload: [
+    'XXXXXXXX',
+    'XXXXXX..',
+    '........',
+    'XXXX....',
+    'XXX.....',
+    '........',
+    'XX......',
+    'X.......',
+  ],
+  /** メンバー。人が2人。 */
+  members: [
+    '.XX..XX.',
+    '.XX..XX.',
+    'XooXXooX',
+    'XooXXooX',
+    '........',
+    'XXXXXXXX',
+    'XooXXooX',
+    'XooXXooX',
+  ],
+  /** 設定。歯車。 */
+  settings: [
+    '..X..X..',
+    '.XXXXXX.',
+    'XXXooXXX',
+    '.Xo..oX.',
+    '.Xo..oX.',
+    'XXXooXXX',
+    '.XXXXXX.',
+    '..X..X..',
+  ],
   /** お知らせ。ベル。 */
   notifications: [
     '...XX...',

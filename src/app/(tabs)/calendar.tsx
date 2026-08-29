@@ -1,6 +1,6 @@
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
-import { FlatList, Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
+import { FlatList, type LayoutChangeEvent, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ErrorView, LoadingView } from '@/components/async-state';
@@ -179,14 +179,23 @@ export default function CalendarScreen() {
 
   const cells = useMemo(() => buildMonthGrid(cursor, todayKey), [cursor, todayKey]);
 
+  /**
+   * セル幅は**実際に描ける幅を測って**決める。
+   * `useWindowDimensions()` を使うと、PCでサイドバーが出ているときに
+   * その幅ぶんだけ余分に見積もり、7列目（土曜）がはみ出して切れる。
+   */
+  const [screenWidth, setScreenWidth] = useState(0);
+  const onScreenLayout = useCallback(
+    (e: LayoutChangeEvent) => setScreenWidth(e.nativeEvent.layout.width),
+    [],
+  );
+  const gridWidth = Math.max(0, screenWidth - SPACING.sm * 2);
+  const cellWidth = gridWidth > 0 ? gridWidth / DAYS_IN_WEEK : 0;
   // セル幅が狭いときは文字を捨ててドット表示にする（要件定義書 12.3）
-  const { width } = useWindowDimensions();
-  const gridWidth = width - SPACING.sm * 2;
-  const cellWidth = gridWidth / DAYS_IN_WEEK;
   const compact = cellWidth < LAYOUT.compactCellWidth;
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']} onLayout={onScreenLayout}>
       <PixelFrame style={styles.header}>
         {/* 月ラベルは独立した行に置く。ボタンと同じ行にすると狭い画面で「2026年8/月」と折り返す */}
         <Text style={styles.monthLabel} numberOfLines={1}>

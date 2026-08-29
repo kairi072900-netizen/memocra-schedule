@@ -85,6 +85,9 @@ export const COLORS = {
    */
   danger: palette.red,
 
+  /** 濃色の面に乗せる、控えめな文字色（サイドバーの非選択ラベルなど）。 */
+  parchmentMuted: palette.parchmentDark,
+
   /** PC用サイドバーの地。モックアップの濃い木目。 */
   sidebar: palette.woodDeep,
   /** サイドバーで現在地を示す面。 */
