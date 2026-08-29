@@ -73,6 +73,7 @@ function RootNav() {
         <Stack.Protected guard={isMember}>
           <Stack.Screen name="index" />
           <Stack.Screen name="(tabs)" />
+          <Stack.Screen name="stream/[id]" />
         </Stack.Protected>
         <Stack.Protected guard={needsClaim}>
           <Stack.Screen name="claim" />
