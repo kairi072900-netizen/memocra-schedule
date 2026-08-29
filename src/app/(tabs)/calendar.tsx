@@ -20,7 +20,14 @@ import {
   SCHEDULE_KIND,
   SPACING,
 } from '@/constants/theme';
-import { getAvailabilities, getMembers, getProjects, getStreams, getTasks } from '@/lib/api';
+import {
+  getAvailabilities,
+  getMembers,
+  getNotifications,
+  getProjects,
+  getStreams,
+  getTasks,
+} from '@/lib/api';
 import { myOpenTasks, unassignedTasks } from '@/lib/project-status';
 import { buildWorkloads } from '@/lib/workload';
 import { supabase } from '@/lib/supabase';
@@ -55,6 +62,7 @@ export default function CalendarScreen() {
   const [cursor, setCursor] = useState<YearMonth>(currentMonth);
   // 起動時は今日を選択しておく。開いた瞬間に今日の予定が見える状態にするため
   const [selectedDate, setSelectedDate] = useState<string | null>(todayKey);
+  const [weekViewNote, setWeekViewNote] = useState(false);
 
   /** 月送りでは選択を解除する。移動先の月に選択日が無く、状態が噛み合わなくなるため */
   const goToMonth = (next: YearMonth) => {
@@ -128,6 +136,12 @@ export default function CalendarScreen() {
   /** 自分のID。「締切タスク（自分）」を絞るのに使う。 */
   const [myId, setMyId] = useState<string | null>(null);
 
+  /**
+   * ベルの未読バッジ。**通知を発行する仕組みはまだ無い（P4）**ので今は常に0だが、
+   * 読む側を先に用意しておき、P4 で発行側を足せばそのまま光るようにしている。
+   */
+  const [unreadCount, setUnreadCount] = useState(0);
+
   const retryAll = useCallback(() => {
     loadProjects();
     loadStreams();
@@ -135,6 +149,10 @@ export default function CalendarScreen() {
     loadMembers();
     loadTasks();
     supabase.auth.getSession().then(({ data }) => setMyId(data.session?.user.id ?? null));
+    // 失敗しても画面は出したいので握りつぶす（バッジが出ないだけ）
+    getNotifications()
+      .then((list) => setUnreadCount(list.filter((n) => n.read_at === null).length))
+      .catch(() => {});
   }, [loadProjects, loadStreams, loadAvailabilities, loadMembers, loadTasks]);
 
   // マウント時とタブ復帰時に読み込む。別画面で配信を登録・削除・回答した結果を反映する。
@@ -201,6 +219,17 @@ export default function CalendarScreen() {
         <Text style={styles.monthLabel} numberOfLines={1}>
           {formatMonthLabel(cursor)}
         </Text>
+        {/* 月／週の切り替え。週表示の中身は後のフェーズ（要件定義書 F6） */}
+        <View style={styles.viewToggle}>
+          <Pressable style={[styles.toggleButton, styles.toggleButtonActive]}>
+            <Text style={styles.navLabel}>カレンダー</Text>
+          </Pressable>
+          <Pressable style={styles.toggleButton} onPress={() => setWeekViewNote(true)}>
+            <Text style={styles.navLabelMuted}>週表示</Text>
+          </Pressable>
+        </View>
+        {weekViewNote && <Text style={styles.note}>週表示は準備中です</Text>}
+
         <View style={styles.headerRow}>
           <NavButton label="‹" onPress={() => goToMonth(addMonths(cursor, -1))} />
           <NavButton
@@ -216,10 +245,27 @@ export default function CalendarScreen() {
             <PixelIcon name="plus" size={LAYOUT.iconSize} color={COLORS.text} />
             <Text style={styles.navLabel}>新規登録</Text>
           </Pressable>
+
+          {/* お知らせ。未読があるときだけ件数を出す */}
+          <Pressable onPress={() => router.push('/notifications')} style={styles.bellButton}>
+            <PixelIcon name="notifications" size={LAYOUT.iconSize} color={COLORS.text} />
+            {unreadCount > 0 && (
+              <View style={styles.bellBadge}>
+                <Text style={styles.bellBadgeText}>{unreadCount}</Text>
+              </View>
+            )}
+          </Pressable>
+
+          {/* 狭い画面ではサイドバーが無いので、設定への導線をここに置く
+              （メンバー・設定は下タブに出ないため。components/nav/items.tsx の約束） */}
+          <Pressable onPress={() => router.push('/settings')} style={styles.bellButton}>
+            <PixelIcon name="settings" size={LAYOUT.iconSize} color={COLORS.text} />
+          </Pressable>
         </View>
 
-        {/* メンバー。色だけで判別させないため名前を必ず併記する（CLAUDE.md §3.4） */}
-        {members && members.length > 0 && (
+        {/* メンバー。色だけで判別させないため名前を必ず併記する（CLAUDE.md §3.4）。
+            サイドバーが出ている広い画面では重複するので、狭いときだけ出す */}
+        {compact && members && members.length > 0 && (
           <View style={styles.memberRow}>
             {members.map((m) => (
               <View key={m.id} style={styles.memberItem}>
@@ -231,11 +277,6 @@ export default function CalendarScreen() {
             ))}
           </View>
         )}
-
-        {/* 設定画面がまだ無いための暫定的な導線。動作確認・アカウント切り替え用 */}
-        <Text style={styles.signOut} onPress={() => supabase.auth.signOut()}>
-          ログアウト
-        </Text>
       </PixelFrame>
 
       {/* 凡例は場所を食うので、セルがチップ表示になる幅のときだけ出す */}
@@ -342,6 +383,9 @@ export default function CalendarScreen() {
           />
         </ScrollView>
       )}
+
+      {/* モックアップ最下部の凡例バー。狭い画面では場所を食うので出さない */}
+      {!compact && <CalendarLegend variant="footer" />}
     </SafeAreaView>
   );
 }
@@ -458,6 +502,36 @@ const styles = StyleSheet.create({
     paddingHorizontal: SPACING.sm,
   },
   navLabel: { fontSize: FONT_SIZE.body },
+  navLabelMuted: { fontSize: FONT_SIZE.body, color: COLORS.textMuted },
+  viewToggle: { flexDirection: 'row', justifyContent: 'center', marginBottom: SPACING.xs },
+  toggleButton: {
+    borderWidth: BORDER_WIDTH.normal,
+    borderColor: COLORS.frameDark,
+    backgroundColor: COLORS.surface,
+    paddingVertical: SPACING.xs,
+    paddingHorizontal: SPACING.md,
+  },
+  toggleButtonActive: { backgroundColor: COLORS.surfaceSunken },
+  note: { fontSize: FONT_SIZE.body, color: COLORS.textMuted, textAlign: 'center' },
+  bellButton: {
+    borderWidth: BORDER_WIDTH.normal,
+    borderColor: COLORS.frameDark,
+    backgroundColor: COLORS.surface,
+    paddingVertical: SPACING.xs,
+    paddingHorizontal: SPACING.sm,
+  },
+  bellBadge: {
+    position: 'absolute',
+    top: -SPACING.xs,
+    right: -SPACING.xs,
+    minWidth: LAYOUT.iconSize,
+    height: LAYOUT.iconSize,
+    backgroundColor: COLORS.danger,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: BORDER_WIDTH.normal,
+  },
+  bellBadgeText: { fontSize: FONT_SIZE.body, color: COLORS.textOnDark },
   primaryButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -477,12 +551,6 @@ const styles = StyleSheet.create({
   },
   memberItem: { alignItems: 'center' },
   memberName: { fontSize: FONT_SIZE.body, color: COLORS.textMuted },
-  signOut: {
-    fontSize: FONT_SIZE.body,
-    color: COLORS.textMuted,
-    textAlign: 'center',
-    marginTop: SPACING.sm,
-  },
 
   weekdayRow: { flexDirection: 'row', paddingHorizontal: SPACING.sm },
   weekdayCell: { alignItems: 'center', paddingVertical: SPACING.xs },

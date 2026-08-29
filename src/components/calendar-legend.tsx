@@ -26,9 +26,18 @@ import {
 const KINDS = Object.keys(SCHEDULE_KIND) as ScheduleKindToken[];
 const STATUSES = Object.keys(ATTENDANCE_STATUS) as AttendanceStatusToken[];
 
-export function CalendarLegend() {
+export function CalendarLegend({
+  /**
+   * `footer` は画面下に敷く帯（モックアップ最下部「アイコン・ステータスの意味」）。
+   * 見出しを添え、地の色を一段変えて「凡例である」ことを示す。
+   */
+  variant = 'inline',
+}: {
+  variant?: 'inline' | 'footer';
+} = {}) {
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, variant === 'footer' && styles.footer]}>
+      {variant === 'footer' && <Text style={styles.footerTitle}>アイコン・ステータスの意味</Text>}
       {KINDS.map((k) => (
         <View key={k} style={styles.item}>
           <PixelIcon name={k} size={LAYOUT.iconSize} color={SCHEDULE_KIND[k].color} />
@@ -53,6 +62,13 @@ export function CalendarLegend() {
 
 // borderRadius は使わない（CLAUDE.md §3.1）。値はすべて theme.ts から読む。
 const styles = StyleSheet.create({
+  footer: {
+    backgroundColor: COLORS.surface,
+    borderTopWidth: BORDER_WIDTH.normal,
+    borderTopColor: COLORS.frameDark,
+    paddingVertical: SPACING.sm,
+  },
+  footerTitle: { fontSize: FONT_SIZE.body, color: COLORS.text },
   container: {
     flexDirection: 'row',
     flexWrap: 'wrap',
