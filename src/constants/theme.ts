@@ -152,6 +152,17 @@ export const ANSWER_BADGE = {
 
 export type AnswerBadgeToken = keyof typeof ANSWER_BADGE;
 
+/**
+ * 配信プラットフォームの表示名。
+ * **色は持たせない。** 予定種別色（赤/紫/緑/青）や出欠色と衝突させないため、
+ * プラットフォームはテキストのみで示す。
+ */
+export const STREAM_PLATFORM = {
+  youtube: 'YouTube',
+  twitch: 'Twitch',
+  other: 'その他',
+} as const;
+
 // ---------------------------------------------------------------------------
 // 余白・サイズ
 // ---------------------------------------------------------------------------
