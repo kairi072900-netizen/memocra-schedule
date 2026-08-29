@@ -58,6 +58,17 @@ function confirmDelete(answerCount: number): Promise<boolean> {
 
 const ANSWER_CHOICES: AvailabilityAnswer[] = ['yes', 'maybe', 'no'];
 
+/**
+ * 前の画面へ戻る。履歴が無ければカレンダーへ。
+ *
+ * ＋タブでの登録は `router.replace` で詳細へ来る（フォームに戻れても意味が無いため）。
+ * その結果スタックが空になり、`router.back()` だけだと何も起きない。
+ */
+function goBack() {
+  if (router.canGoBack()) router.back();
+  else router.replace('/calendar');
+}
+
 export default function StreamDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
 
@@ -131,7 +142,7 @@ export default function StreamDetailScreen() {
     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
       <ScrollView contentContainerStyle={styles.body}>
         <PixelFrame style={styles.header}>
-          <Text style={styles.back} onPress={() => router.back()}>
+          <Text style={styles.back} onPress={goBack}>
             ◀ もどる
           </Text>
         </PixelFrame>
@@ -255,7 +266,7 @@ export default function StreamDetailScreen() {
                   setBusy(true);
                   try {
                     await deleteStream(stream.id);
-                    router.back();
+                    goBack();
                   } catch (e) {
                     setError(e instanceof Error ? e.message : '削除に失敗しました');
                     setBusy(false);
