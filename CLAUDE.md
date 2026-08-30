@@ -28,12 +28,19 @@
 
 ## 2. 開発フェーズと現在地
 
-### 現在地: **ユーザー要望の7項目を実装完了 → 次は Edge Function のデプロイ（ユーザー作業）と P3（4人に配る）**
+### 現在地: **ユーザー要望の7項目を実装・デプロイ完了 → 次は P3（4人に配る）／本番動作確認**
 
-**2026-08-30 に、要件定義書の外側の要望7件を実装した**（下記「要望7項目」）。
-うち P9（外部カレンダー）と P10（AI）は **Supabase CLI の導入と Gemini API キーの取得**
-というユーザー側の作業が終わるまで動かない（手順は `supabase/functions/README.md`）。
-アプリ本体はデプロイ無しでも通常どおり動く（該当画面にエラーが出るだけ）。
+**2026-08-30〜31 に、要件定義書の外側の要望7件を実装した**（下記「要望7項目」）。
+P9（外部カレンダー）と P10（AI）の Edge Function は **2026-08-31 に本番へデプロイ済み**。
+
+- CLI は `npm install --save-dev supabase` で導入（Homebrew 不使用の環境）。`npx supabase` で使う
+- Supabase プロジェクト Ref: `heqkeflguxahvrmfunvg`
+- secrets: `GEMINI_API_KEY` 設定済み。モデルは `gemini-3.6-flash`
+  （`gemini-2.0-flash` は Google が廃止済み。さらに変わったら
+   `npx supabase secrets set GEMINI_MODEL=...` で追従、再デプロイ不要）
+- `ai` の「今週のまとめ」（`responseSchema` 使用）が本番で成功を確認
+
+デプロイ手順の全文と、モデル差し替え・トークン再発行は `supabase/functions/README.md`。
 
 **P1でやること: Supabase接続 + 認証 + RLS。**
 完了条件は **「4人がログインでき、予定が永続化される」** こと。
@@ -66,8 +73,8 @@ P0（ダミーデータでカレンダーUI）は完了。ドット絵フォン�
 | **P6** | **負荷ダッシュボード** | **実装完了・動作確認待ち** |
 | P7 | 会議モード・コメントスレッド | 議事録だけ P10 で先行実装 |
 | P8 | マルチチーム対応（汎用化） | |
-| **P9** | **外部カレンダー取り込み（Google / TimeTree の ICS）** | **コード完了・要デプロイ** |
-| **P10** | **専用AI（Gemini）5用途** | **コード完了・要デプロイ＋APIキー** |
+| **P9** | **外部カレンダー取り込み（Google / TimeTree の ICS）** | **デプロイ済み・本番動作確認待ち** |
+| **P10** | **専用AI（Gemini）5用途** | **デプロイ済み・「今週のまとめ」は本番成功** |
 
 ### P1の進捗
 
@@ -235,9 +242,9 @@ P5・P6 でタスク一覧と負荷ダッシュボードの中身が埋まり、
 - [x] **目標機能**（要望3のアプリ側）。`0004_goals.sql` / `lib/goal.ts` /
       `components/goal-card.tsx` / `(tabs)/goals.tsx`。
       チーム・個人・企画の3スコープ × 短期・中長期の2軸
-- [ ] **`0004_goals.sql` を SQL Editor で実行**（ユーザー作業）
+- [x] **`0004_goals.sql` を SQL Editor で実行**（2026-08-31 適用済み）
 
-#### 中長期（Supabase CLI と APIキーが要る。コードは完了・要デプロイ）
+#### 中長期（Edge Function。2026-08-31 デプロイ完了）
 
 - [x] **Edge Function の土台**。`supabase/functions/_shared/auth.ts`。
       **service_role は使わず**、呼び出し元の JWT で RLS を効かせる（§3.5）
@@ -246,11 +253,17 @@ P5・P6 でタスク一覧と負荷ダッシュボードの中身が埋まり、
       ブラウザから直接 fetch すると CORS で弾かれるのでサーバー経由が必須
 - [x] **専用AI**（要望7）。`ai` + `0006_meetings.sql` + `lib/ai.ts`。
       自然文で登録 / 進捗まとめ / 壁打ち / 工程調整 / 議事録の5用途
-- [ ] **ユーザー作業**: Supabase CLI の導入 → `supabase link` → Gemini APIキーの取得と
-      `supabase secrets set` → `supabase functions deploy sync-ics` / `ai` →
-      `0005` / `0006` の SQL を実行。手順は `supabase/functions/README.md`
-- [ ] **無料枠の確認**（私には断定できない）。Supabase Free の Edge Functions 上限、
-      Gemini のどのモデルが無料枠か、音声入力が無料枠の対象か
+- [x] **`0005` / `0006` を SQL Editor で実行**（2026-08-31 適用済み。
+      Storage バケット `meeting-audio` も作成済み）
+- [x] **CLI 導入・`supabase link`・`GEMINI_API_KEY` の secret 設定・
+      `functions deploy sync-ics` / `ai`**（2026-08-31 完了）
+- [x] **`invoke` のエラーが「non-2xx」しか出ず原因が分からない問題を修正**。
+      `FunctionsHttpError.context`（Response）のボディから実際の文言を取る
+      （`lib/ai.ts` / `lib/api.ts`）。これで `gemini-2.0-flash` 廃止の 404 に気づけた
+- [ ] **無料枠の使用量を運用しながら見る**（私には断定できない）。Supabase Free の
+      Edge Functions 上限、Gemini の無料枠、音声入力が無料枠の対象か。
+      使用量は Supabase ダッシュボードと Google AI Studio で確認
+- [ ] **他のAI用途の本番確認**（自然文登録・議事録・工程調整。`Cmd+Shift+R`）
 
 #### この一連で決めた、破ってはいけない約束
 
