@@ -10,13 +10,26 @@
 // **アプリのバンドルには絶対に置かない**（CLAUDE.md §3.5）。
 
 /**
- * 使うモデル。**ここ1か所だけ変えれば全用途が切り替わる。**
+ * 使うモデル。
+ *
+ * **Google は定期的にモデルを廃止する**（`gemini-2.0-flash` は 2026年前半に廃止され、
+ * 404 で「gemini-3.6-flash を使え」と言われた）。またそうなったときに
+ * **コードを触らず追従できる**よう、secret `GEMINI_MODEL` で上書きできる:
+ *   supabase secrets set GEMINI_MODEL=gemini-4-flash   （例）
+ * secret は次の呼び出しから即反映される（再デプロイ不要）。
+ *
  * 無料枠の対象モデルと上限は変わるので、使う前に Google AI Studio の
  * 料金ページで確認すること（私には確認できない）。
  */
-const MODEL = 'gemini-2.0-flash';
+const DEFAULT_MODEL = 'gemini-3.6-flash';
 
-const ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`;
+function modelName(): string {
+  return Deno.env.get('GEMINI_MODEL') ?? DEFAULT_MODEL;
+}
+
+function endpoint(): string {
+  return `https://generativelanguage.googleapis.com/v1beta/models/${modelName()}:generateContent`;
+}
 
 /** Gemini に渡す中身。テキストか、インラインの音声/データ。 */
 export type Part =
@@ -56,7 +69,7 @@ export async function generate({ system, parts, schema }: GenerateOptions): Prom
       : {},
   };
 
-  const res = await fetch(ENDPOINT, {
+  const res = await fetch(endpoint(), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
     body: JSON.stringify(body),
@@ -64,8 +77,11 @@ export async function generate({ system, parts, schema }: GenerateOptions): Prom
 
   if (!res.ok) {
     const detail = await res.text();
-    // 上限に当たったときに何が起きたか分かるよう、本文をそのまま返す
-    throw new Error(`AIの呼び出しに失敗しました（${res.status}）: ${detail.slice(0, 500)}`);
+    // 上限・モデル廃止・キー不正など、何が起きたか分かるよう本文をそのまま返す。
+    // モデル名も添える（「gemini-X は廃止された」系のときに何を使っていたか分かる）
+    throw new Error(
+      `AIの呼び出しに失敗しました（${res.status}, model=${modelName()}）: ${detail.slice(0, 500)}`,
+    );
   }
 
   const data = await res.json();

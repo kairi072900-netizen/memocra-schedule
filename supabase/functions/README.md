@@ -75,7 +75,16 @@ npx supabase secrets set GEMINI_API_KEY=ここに貼る
 登録するのは `GEMINI_API_KEY` の1つだけです。
 
 **無料枠の条件は変わるので、使う前に必ず料金ページで確認してください。**
-モデルは `_shared/gemini.ts` の `MODEL` 定数1か所（`gemini-2.0-flash`）で切り替えられます。
+
+モデルは `_shared/gemini.ts` の `DEFAULT_MODEL`（現在 `gemini-3.6-flash`）です。
+Google がモデルを廃止したら（404 で「別のモデルを使え」と言われる）、
+**コードを触らず** secret で差し替えられます:
+
+```bash
+npx supabase secrets set GEMINI_MODEL=新しいモデル名
+```
+
+secret は次の呼び出しから即反映されます（再デプロイ不要）。
 
 ### 5. デプロイ
 
