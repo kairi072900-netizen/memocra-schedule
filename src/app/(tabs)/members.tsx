@@ -15,11 +15,12 @@ import {
   LAYOUT,
   SPACING,
 } from '@/constants/theme';
-import { getMembers, getTasks, updateMyMember } from '@/lib/api';
+import { getGoals, getMembers, getTasks, updateMyMember } from '@/lib/api';
 import { useSession } from '@/lib/auth';
+import { activeGoals, goalsOfMember } from '@/lib/goal';
 import { doneTaskCount, levelOf } from '@/lib/level';
 import { TASK_TEMPLATES } from '@/lib/task-template';
-import type { Member, Task } from '@/types';
+import type { Goal, Member, Task } from '@/types';
 
 /**
  * S6 メンバー。4人の役割・活動時間帯を見て、**自分の行だけ**編集する。
@@ -52,10 +53,14 @@ export default function MembersScreen() {
 
   const [members, setMembers] = useState<Member[] | null>(null);
   const [tasks, setTasks] = useState<Task[] | null>(null);
+  const [goals, setGoals] = useState<Goal[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(() => {
     setError(null);
+    getGoals()
+      .then(setGoals)
+      .catch((e: Error) => setError(e.message));
     getMembers()
       .then(setMembers)
       .catch((e: Error) => setError(e.message));
@@ -75,16 +80,16 @@ export default function MembersScreen() {
 
         {error && <ErrorView message={error} onRetry={load} />}
 
-        {!members || !tasks ? (
+        {!members || !tasks || !goals ? (
           !error && <LoadingView label="読み込み中…" />
         ) : members.length === 0 ? (
           <Text style={styles.hint}>メンバーが取得できませんでした。再読み込みしてください。</Text>
         ) : (
           members.map((m) =>
             m.id === myId ? (
-              <MyProfile key={m.id} member={m} tasks={tasks} onSaved={load} />
+              <MyProfile key={m.id} member={m} tasks={tasks} goals={goals} onSaved={load} />
             ) : (
-              <OtherMember key={m.id} member={m} tasks={tasks} />
+              <OtherMember key={m.id} member={m} tasks={tasks} goals={goals} />
             ),
           )
         )}
@@ -97,10 +102,12 @@ export default function MembersScreen() {
 function MyProfile({
   member,
   tasks,
+  goals,
   onSaved,
 }: {
   member: Member;
   tasks: Task[];
+  goals: Goal[];
   onSaved: () => void;
 }) {
   const [name, setName] = useState(member.name);
@@ -148,6 +155,8 @@ function MyProfile({
       <Text style={styles.level}>
         Lv.{level.level}　{level.expInLevel}/{level.expForNext} EXP（完了 {level.exp / 10} 件）
       </Text>
+      {/* Lv とは別物。Lv は完了数だけで増える加点型、目標は未達がありうる（CLAUDE.md §2） */}
+      <GoalLine goals={goals} memberId={member.id} />
 
       <Text style={styles.label}>名前</Text>
       <TextInput value={name} onChangeText={setName} style={styles.input} />
@@ -216,7 +225,15 @@ function MyProfile({
 }
 
 /** 他の人の行。読み取り専用（RLSで更新できない）。 */
-function OtherMember({ member, tasks }: { member: Member; tasks: Task[] }) {
+function OtherMember({
+  member,
+  tasks,
+  goals,
+}: {
+  member: Member;
+  tasks: Task[];
+  goals: Goal[];
+}) {
   const level = levelOf(doneTaskCount(tasks, member.id));
   return (
     <PixelFrame style={styles.card}>
@@ -227,10 +244,25 @@ function OtherMember({ member, tasks }: { member: Member; tasks: Task[] }) {
       <Text style={styles.level}>
         Lv.{level.level}　完了 {level.exp / 10} 件
       </Text>
+      <GoalLine goals={goals} memberId={member.id} />
       <Text style={styles.readonly}>役割: {member.role.length > 0 ? member.role : '未設定'}</Text>
       <Text style={styles.readonly}>活動時間帯: {member.active_hours ?? '未登録'}</Text>
       <Text style={styles.hint}>他の人の情報は本人だけが変更できます</Text>
     </PixelFrame>
+  );
+}
+
+/**
+ * その人の進行中の目標を1行で出す。詳細と編集は目標画面（`/goals`）で行う。
+ * ここに一覧を丸ごと置くと、メンバー画面が「誰がいるか」を見る画面でなくなるため。
+ */
+function GoalLine({ goals, memberId }: { goals: Goal[]; memberId: string }) {
+  const mine = activeGoals(goalsOfMember(goals, memberId));
+  if (mine.length === 0) return null;
+  return (
+    <Text style={styles.readonly} numberOfLines={2}>
+      目標: {mine.map((g) => g.title).join('・')}
+    </Text>
   );
 }
 

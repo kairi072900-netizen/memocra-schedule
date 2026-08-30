@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Text } from '@/components/app-text';
 import { ErrorView, LoadingView } from '@/components/async-state';
+import { GoalCard } from '@/components/goal-card';
 import { PixelIcon } from '@/components/pixel/icon';
 import { PixelFrame } from '@/components/pixel/frame';
 import { ProjectForm } from '@/components/project-form';
@@ -22,12 +23,14 @@ import {
   createTasks,
   deleteProject,
   getMembers,
+  getGoals,
   getTasks,
   type TaskPatch,
   updateProject,
   updateTask,
 } from '@/lib/api';
 import { dateToKey, WEEKDAY_LABELS } from '@/lib/calendar';
+import { goalsOfProject } from '@/lib/goal';
 import {
   deriveProjectStatus,
   openTasks,
@@ -36,7 +39,7 @@ import {
 } from '@/lib/project-status';
 import { supabase } from '@/lib/supabase';
 import { buildTasksFromTemplate, TASK_TEMPLATES } from '@/lib/task-template';
-import type { Member, Project, Task } from '@/types';
+import type { Goal, Member, Project, Task } from '@/types';
 
 /** '2026-08-20T19:00:00+09:00' → '8月20日(木) 19:00' */
 function formatWhen(isoAt: string): string {
@@ -74,6 +77,7 @@ export default function ProjectDetailScreen() {
   const [projects, setProjects] = useState<Project[] | null>(null);
   const [tasks, setTasks] = useState<Task[] | null>(null);
   const [members, setMembers] = useState<Member[] | null>(null);
+  const [goals, setGoals] = useState<Goal[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -93,6 +97,9 @@ export default function ProjectDetailScreen() {
       .catch((e: Error) => setError(e.message));
     getMembers()
       .then(setMembers)
+      .catch((e: Error) => setError(e.message));
+    getGoals()
+      .then(setGoals)
       .catch((e: Error) => setError(e.message));
   }, [id]);
 
@@ -157,6 +164,9 @@ export default function ProjectDetailScreen() {
         ) : (
           <View style={styles.content}>
             <ProjectHeader project={project} tasks={projectTasks} />
+
+            {/* この企画に紐づく目標（要望「企画ごとの目標」）。編集は目標画面で行う */}
+            <ProjectGoals goals={goals ?? []} projectId={project.id} todayKey={todayKey} />
 
             <Text style={styles.sectionHeading}>
               工程（{openTasks(projectTasks).length}/{projectTasks.length} 未完了）
@@ -262,6 +272,31 @@ function ProjectHeader({ project, tasks }: { project: Project; tasks: Task[] }) 
         <Text style={styles.warning}>担当が未定の工程が {unassigned.length} 件あります</Text>
       )}
     </View>
+  );
+}
+
+/**
+ * この企画の目標。**一覧するだけで、ここでは編集しない**（編集は `/goals`）。
+ * 投稿後分析の工程でここを見返せるように、詳細画面の上のほうに置いている。
+ */
+function ProjectGoals({
+  goals,
+  projectId,
+  todayKey,
+}: {
+  goals: Goal[];
+  projectId: string;
+  todayKey: string;
+}) {
+  const list = goalsOfProject(goals, projectId);
+  if (list.length === 0) return null;
+  return (
+    <>
+      <Text style={styles.sectionHeading}>この企画の目標 {list.length}件</Text>
+      {list.map((g) => (
+        <GoalCard key={g.id} goal={g} todayKey={todayKey} />
+      ))}
+    </>
   );
 }
 

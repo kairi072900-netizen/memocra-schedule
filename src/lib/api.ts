@@ -2,6 +2,10 @@ import { supabase } from '@/lib/supabase';
 import type {
   Availability,
   AvailabilityAnswer,
+  Goal,
+  GoalHorizon,
+  GoalScope,
+  GoalStatus,
   Member,
   Notification,
   Project,
@@ -374,5 +378,77 @@ export async function markNotificationRead(id: string): Promise<void> {
 
   if (error) {
     throw new Error(`既読にできませんでした: ${error.message}`);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// 目標（goals）
+//
+// 要件定義書には無く、ユーザーの要望で足した機能。
+// スコープ（team / member / project）と対象列の整合はDB側のCHECK制約が保証するので、
+// ここでは組み立てだけ間違えないようにする（0004_goals.sql）。
+// ---------------------------------------------------------------------------
+
+/** 期限の近い順、期限なしは末尾。同じ画面で短期と中長期を並べるため状態順は付けない。 */
+export async function getGoals(): Promise<Goal[]> {
+  const { data, error } = await supabase
+    .from('goals')
+    .select('*')
+    .order('due_on', { ascending: true, nullsFirst: false });
+
+  if (error) {
+    throw new Error(`目標の取得に失敗しました: ${error.message}`);
+  }
+  return data;
+}
+
+export interface GoalInput {
+  scope: GoalScope;
+  horizon: GoalHorizon;
+  /** `scope: 'member'` のときだけ入れる。他は null。 */
+  member_id: string | null;
+  /** `scope: 'project'` のときだけ入れる。他は null。 */
+  project_id: string | null;
+  title: string;
+  metric: string | null;
+  target_value: number | null;
+  due_on: string | null;
+}
+
+export async function createGoal(input: GoalInput): Promise<Goal> {
+  const { data, error } = await supabase.from('goals').insert(input).select().single();
+
+  if (error) {
+    throw new Error(`目標の登録に失敗しました: ${error.message}`);
+  }
+  return data;
+}
+
+export type GoalPatch = Partial<GoalInput & { current_value: number; status: GoalStatus }>;
+
+export async function updateGoal(id: string, patch: GoalPatch): Promise<Goal> {
+  const { data, error } = await supabase
+    .from('goals')
+    .update(patch)
+    .eq('id', id)
+    .select()
+    .single();
+
+  if (error) {
+    throw new Error(`目標の更新に失敗しました: ${error.message}`);
+  }
+  return data;
+}
+
+/**
+ * 目標を削除する。
+ *
+ * **達成できなかった目標は消さずに `status: 'dropped'` にするほうがよい**
+ * （何を諦めたかが振り返れなくなるため）。削除は登録し間違えたときのためのもの。
+ */
+export async function deleteGoal(id: string): Promise<void> {
+  const { error } = await supabase.from('goals').delete().eq('id', id);
+  if (error) {
+    throw new Error(`目標の削除に失敗しました: ${error.message}`);
   }
 }

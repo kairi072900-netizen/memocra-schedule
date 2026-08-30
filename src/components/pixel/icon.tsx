@@ -179,6 +179,17 @@ const ICONS = {
     '........',
     '...XX...',
   ],
+  /** 目標。旗（RPG風。到達点の意）。 */
+  goals: [
+    '.XX.....',
+    '.XXXXXX.',
+    '.XXooXX.',
+    '.XXXXXX.',
+    '.XX.....',
+    '.XX.....',
+    '.XX.....',
+    'XXXX....',
+  ],
 } as const satisfies Record<string, readonly string[]>;
 
 export type PixelIconName = keyof typeof ICONS;

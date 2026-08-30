@@ -73,6 +73,22 @@ export type NotificationKind =
 /** 通知タップ時の遷移先種別。 */
 export type NotificationLinkType = 'task' | 'stream' | 'project';
 
+/**
+ * 目標のスコープ。要件定義書には無く、ユーザーの要望で足した機能。
+ * 対象列（`member_id` / `project_id`）との整合はDBのCHECK制約で保証する（0004_goals.sql）。
+ */
+export type GoalScope = 'team' | 'member' | 'project';
+
+/** 目標の時間軸。**短期と中長期の2つだけ**にする（増やすと使い分けが曖昧になる）。 */
+export type GoalHorizon = 'short' | 'long';
+
+/**
+ * 目標の状態。`dropped`（やめた）を持たせているのは、
+ * 達成できなかった目標を消さずに残せるようにするため
+ * （消すと「何を諦めたか」が振り返れない）。
+ */
+export type GoalStatus = 'active' | 'achieved' | 'dropped';
+
 // ---------------------------------------------------------------------------
 // エンティティ
 // ---------------------------------------------------------------------------
@@ -193,5 +209,35 @@ export interface Notification extends TeamScoped {
   link_id: string;
   /** null = 未読。未読バッジの判定に使う。 */
   read_at: string | null;
+  created_at: string;
+}
+
+/**
+ * 目標（要件定義書には無い。ユーザーの要望で追加）。
+ *
+ * 【Lv とは別物】`src/lib/level.ts` の加点型レベルには影響させない。
+ * レベルは完了タスク数だけで決まり、減る要素を持たない（CLAUDE.md §2）。
+ * 目標は「達成できなかった」があり得るので、混ぜると却下したHP案に戻る。
+ *
+ * 【進捗は手入力】`current_value` は人が更新する。
+ * YouTube Data API からの自動取得は要件定義書 v2 の項目なので、ここではやらない。
+ */
+export interface Goal extends TeamScoped {
+  id: string;
+  scope: GoalScope;
+  horizon: GoalHorizon;
+  /** `scope: 'member'` のときだけ入る。Member.id を参照。 */
+  member_id: string | null;
+  /** `scope: 'project'` のときだけ入る。Project.id を参照。 */
+  project_id: string | null;
+  title: string;
+  /** 「登録者数」「本」など、数える対象の名前。自由記述。 */
+  metric: string | null;
+  /** 目標値。null なら数値で測らない目標（「編集を覚える」など）。 */
+  target_value: number | null;
+  current_value: number;
+  /** 期限（'YYYY-MM-DD'）。null なら期限なし。 */
+  due_on: string | null;
+  status: GoalStatus;
   created_at: string;
 }

@@ -49,6 +49,17 @@ export default function SettingsScreen() {
         </PixelFrame>
 
         <PixelFrame style={styles.card}>
+          <Text style={styles.sectionTitle}>目標</Text>
+          <Text style={styles.hint}>
+            チーム・個人・企画ごとに、短期（今月・今四半期）と中長期（半年・1年）の目標を置けます
+          </Text>
+          {/* 下タブに出ない画面なので、ここから辿れるようにする（nav/items.tsx の約束） */}
+          <Pressable style={styles.linkRow} onPress={() => router.push({ pathname: '/goals' })}>
+            <Text style={styles.link}>目標を見る・立てる ›</Text>
+          </Pressable>
+        </PixelFrame>
+
+        <PixelFrame style={styles.card}>
           <Text style={styles.sectionTitle}>このアプリについて</Text>
           <Text style={styles.about}>
             メモリークラフトの制作スケジュールを共有するためのアプリです。
