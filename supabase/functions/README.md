@@ -21,52 +21,78 @@
 ## デプロイ手順（ユーザー作業）
 
 私（Claude）にはできない作業です。順に実行してください。
+このリポジトリの Supabase プロジェクト Ref は **`heqkeflguxahvrmfunvg`** です
+（`.env` の `EXPO_PUBLIC_SUPABASE_URL` の `https://<ref>.supabase.co` から取れます）。
 
-### 1. Supabase CLI を入れる
+**Docker は不要です。** Supabase CLI v2 の `functions deploy` は Docker なしで
+バンドル・デプロイします（Docker が要るのは `supabase start` のローカルスタックだけ）。
 
-```bash
-brew install supabase/tap/supabase
-```
+### 1. SQL を先に適用する
 
-### 2. プロジェクトに紐づける
+`supabase/migrations/` の `0004_goals.sql` → `0005_external_calendars.sql`
+→ `0006_meetings.sql` を、この順で Supabase ダッシュボードの **SQL Editor** に
+貼って実行します（これまでと同じ手順。何度実行しても安全です）。
 
-```bash
-supabase login
-```
+`0006_meetings.sql` は Storage のバケット `meeting-audio`（非公開）も作ります。
 
-```bash
-supabase link --project-ref <SupabaseプロジェクトのRef>
-```
+**`supabase db push` は使わないこと。** これまで migration を手貼りで運用してきたので、
+`db push` は 0001 から全部を流し直そうとして既存オブジェクトで失敗します。
 
-Ref は Supabase ダッシュボードの Project Settings → General で確認できます。
+### 2. Supabase CLI を入れる
 
-### 3. Gemini の API キーを登録する（`ai` 関数を使う場合のみ）
-
-Google AI Studio（https://aistudio.google.com/apikey）でキーを発行してから:
+Homebrew は不要。npm の devDependency として入れて `npx` で呼びます。
 
 ```bash
-supabase secrets set GEMINI_API_KEY=ここに貼る
+npm install --save-dev supabase
 ```
+
+以降のコマンドはすべて `npx supabase ...` で実行します。
+
+### 3. ログインしてプロジェクトに紐づける
+
+```bash
+npx supabase login
+```
+
+ブラウザが開くので承認します（アクセストークンが `~/.supabase/` に保存される）。
+
+```bash
+npx supabase link --project-ref heqkeflguxahvrmfunvg
+```
+
+DB パスワードを聞かれますが、**空のまま Enter で飛ばして構いません**
+（functions と secrets の操作にはパスワード不要）。
+
+### 4. Gemini の API キーを登録する（`ai` 関数を使う場合のみ）
+
+Google AI Studio（https://aistudio.google.com/apikey）で「Create API key」。
+
+```bash
+npx supabase secrets set GEMINI_API_KEY=ここに貼る
+```
+
+`SUPABASE_URL` / `SUPABASE_ANON_KEY` などは Supabase が自動で入れるので設定不要。
+登録するのは `GEMINI_API_KEY` の1つだけです。
 
 **無料枠の条件は変わるので、使う前に必ず料金ページで確認してください。**
-モデルは `ai/index.ts` の `MODEL` 定数1か所で切り替えられます。
+モデルは `_shared/gemini.ts` の `MODEL` 定数1か所（`gemini-2.0-flash`）で切り替えられます。
 
-### 4. デプロイ
+### 5. デプロイ
 
 ```bash
-supabase functions deploy sync-ics
+npx supabase functions deploy sync-ics
 ```
 
 ```bash
-supabase functions deploy ai
+npx supabase functions deploy ai
 ```
 
-### 5. SQL を適用する
+JWT 検証はデフォルトの ON のままにします（`_shared/auth.ts` でも自前で確認しますが、
+Supabase ゲートウェイの検証も残しておいたほうが安全）。
+`--no-verify-jwt` は付けないこと。
 
-`supabase/migrations/` の `0004` `0005` `0006` を、番号順に SQL Editor へ貼って実行します
-（これまでと同じ手順。何度実行しても安全です）。
-
-`0006_meetings.sql` は Storage のバケット `meeting-audio` も作ります。
+デプロイ結果は Dashboard → Edge Functions で確認できます。
+`npx supabase functions list` でも一覧が出ます。
 
 ## 動作確認
 
