@@ -240,10 +240,11 @@ export default function CalendarScreen() {
    * その幅ぶんだけ余分に見積もり、7列目（土曜）がはみ出して切れる。
    */
   const [screenWidth, setScreenWidth] = useState(0);
-  const onScreenLayout = useCallback(
-    (e: LayoutChangeEvent) => setScreenWidth(e.nativeEvent.layout.width),
-    [],
-  );
+  const [screenHeight, setScreenHeight] = useState(0);
+  const onScreenLayout = useCallback((e: LayoutChangeEvent) => {
+    setScreenWidth(e.nativeEvent.layout.width);
+    setScreenHeight(e.nativeEvent.layout.height);
+  }, []);
   const gridWidth = Math.max(0, screenWidth - SPACING.sm * 2);
   const cellWidth = gridWidth > 0 ? gridWidth / DAYS_IN_WEEK : 0;
   // セル幅が狭いときは文字を捨ててドット表示にする（要件定義書 12.3）
@@ -260,7 +261,22 @@ export default function CalendarScreen() {
     (e: LayoutChangeEvent) => setGridAreaHeight(e.nativeEvent.layout.height),
     [],
   );
-  const cellHeight = compact
+
+  /**
+   * **縦が足りない画面ではスクロールに落とす。**
+   *
+   * セルの高さには下限（`calendarCellMinHeight`）があるので、残りの高さを6で割った
+   * 値がそれを下回ると、6行目（月末）が画面の外に押し出されて**切れる**（実際に踏んだ）。
+   * 切るくらいならスクロールさせるほうがよい。
+   *
+   * 判定に使うのは**画面の高さ**であって、グリッド領域の実測ではない。
+   * 実測で決めるとレイアウトが変わる → 実測値が変わる → また判定が変わる、と
+   * 行ったり来たりする。画面の高さは切り替えても変わらないので安定する。
+   */
+  const fitsOnOneScreen = screenHeight === 0 || screenHeight >= LAYOUT.calendarFitMinHeight;
+  const scrolls = compact || !fitsOnOneScreen;
+
+  const cellHeight = scrolls
     ? LAYOUT.calendarCellHeight
     : Math.max(LAYOUT.calendarCellMinHeight, gridAreaHeight / WEEKS_IN_GRID);
 
@@ -343,9 +359,9 @@ export default function CalendarScreen() {
       ) : !projects || !streams || !availabilities || !members ? (
         <LoadingView label="予定を読み込み中…" />
       ) : (
-        <Body compact={compact}>
+        <Body scrolls={scrolls}>
           {/* 広い画面ではここが残りの高さを取り、その高さからセルの高さを決める */}
-          <View style={compact ? undefined : styles.gridArea} onLayout={onGridAreaLayout}>
+          <View style={scrolls ? undefined : styles.gridArea} onLayout={onGridAreaLayout}>
             <FlatList
               data={cells}
               numColumns={DAYS_IN_WEEK}
@@ -369,7 +385,7 @@ export default function CalendarScreen() {
             />
           </View>
 
-          <View style={compact ? undefined : styles.panelRow}>
+          <View style={scrolls ? undefined : styles.panelRow}>
             <ScheduleSummary
             selectedLabel={
               selectedDate === null
@@ -413,8 +429,9 @@ export default function CalendarScreen() {
  *   - 広い画面: ただの `View`。**スクロールさせず1画面に収める**
  *              （グリッド領域が残りの高さを取り、パネル行は固定高さ）
  */
-function Body({ compact, children }: { compact: boolean; children: React.ReactNode }) {
-  if (compact) {
+/** 1画面に収まらないときだけスクロールさせる（幅が狭い or 縦が足りない）。 */
+function Body({ scrolls, children }: { scrolls: boolean; children: React.ReactNode }) {
+  if (scrolls) {
     return <ScrollView contentContainerStyle={styles.scrollBody}>{children}</ScrollView>;
   }
   return <View style={styles.fitBody}>{children}</View>;
