@@ -241,3 +241,39 @@ export interface Goal extends TeamScoped {
   status: GoalStatus;
   created_at: string;
 }
+
+/**
+ * 外部カレンダー（Google / TimeTree の公開 ICS URL）の登録。
+ *
+ * **読み取り専用の連携。** アプリの予定を書き戻すことはしない。
+ * 取り込みは Edge Function `sync-ics` が行う
+ * （ブラウザから ICS を直接 fetch すると CORS で弾かれるため）。
+ */
+export interface ExternalCalendar extends TeamScoped {
+  id: string;
+  /** 「けんのGoogleカレンダー」など、誰の何かが分かる名前。 */
+  label: string;
+  /**
+   * iCal 形式の公開URL。
+   * **Google の「非公開URL（iCal形式）」は、知っている人なら誰でも中身を見られる。**
+   * 登録画面に必ずその注意を出すこと。
+   */
+  ics_url: string;
+  enabled: boolean;
+  last_synced_at: string | null;
+  /** 取り込みに失敗した理由。URLの打ち間違いに気づけるよう画面に出す。 */
+  last_error: string | null;
+  created_at: string;
+}
+
+/** 取り込んだ外部予定。DBに持っているのはキャッシュで、次の取り込みで入れ替わる。 */
+export interface ExternalEvent extends TeamScoped {
+  id: string;
+  calendar_id: string;
+  /** ICS の UID。 */
+  uid: string;
+  title: string;
+  starts_at: string;
+  ends_at: string | null;
+  all_day: boolean;
+}

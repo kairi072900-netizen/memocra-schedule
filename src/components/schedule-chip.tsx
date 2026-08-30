@@ -33,12 +33,24 @@ export function ScheduleChip({
   const kind = SCHEDULE_KIND[event.kind];
   const status = event.attendance ? ATTENDANCE_STATUS[event.attendance] : null;
 
+  // 外部カレンダーから取り込んだ予定は**種別の色を持たない**。
+  // 4色（ロング/ショート/配信/撮影）は自前の予定の意味に予約されていて、
+  // ここに5色目を足すと凡例が増える（§3.4「凡例を画面ごとに変えない」）。
+  const external = event.source === 'external';
+  const barColor = external ? COLORS.textMuted : kind.color;
+
   return (
     <View style={styles.chip}>
-      <View style={[styles.kindBar, { backgroundColor: kind.color }]} />
+      <View style={[styles.kindBar, { backgroundColor: barColor }]} />
       <View style={styles.body}>
         <View style={styles.topRow}>
-          <PixelIcon name={event.kind} size={LAYOUT.iconSize} color={kind.color} />
+          {/* 外部予定はアイコンを出さず「外」の1文字にする。
+              種別アイコンを流用すると、撮影予定と見分けがつかなくなる */}
+          {external ? (
+            <Text style={styles.externalMark}>外</Text>
+          ) : (
+            <PixelIcon name={event.kind} size={LAYOUT.iconSize} color={kind.color} />
+          )}
           {/* 時刻は縮めない。狭いセルではタイトルだけが省略され、時刻は必ず読める */}
           <Text style={styles.time}>{event.time}</Text>
           <Text style={styles.title} numberOfLines={1}>
@@ -78,6 +90,8 @@ const styles = StyleSheet.create({
   body: { flex: 1, paddingHorizontal: BORDER_WIDTH.normal, paddingVertical: BORDER_WIDTH.hairline },
   topRow: { flexDirection: 'row', alignItems: 'center', gap: BORDER_WIDTH.normal },
   time: { fontSize: FONT_SIZE.body },
+  /** 外部カレンダーの予定の目印。色ではなく文字で示す（§3.4） */
+  externalMark: { fontSize: FONT_SIZE.body, color: COLORS.textMuted },
   title: { fontSize: FONT_SIZE.body, flexShrink: 1 },
   answerRow: {
     flexDirection: 'row',

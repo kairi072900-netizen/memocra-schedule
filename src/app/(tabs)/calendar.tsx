@@ -21,6 +21,8 @@ import {
 } from '@/constants/theme';
 import {
   getAvailabilities,
+  getExternalCalendars,
+  getExternalEvents,
   getMembers,
   getNotifications,
   getProjects,
@@ -49,7 +51,7 @@ import {
   resolveMemberAnswers,
   type ScheduleEvent,
 } from '@/lib/schedule';
-import type { Availability, Member, Project, Stream, Task } from '@/types';
+import type { Availability, ExternalEvent, Member, Project, Stream, Task } from '@/types';
 
 /** S0 カレンダー。月表示のみ。週表示への切り替えは後のフェーズ（要件定義書 F6）。 */
 export default function CalendarScreen() {
@@ -157,18 +159,38 @@ export default function CalendarScreen() {
    */
   const [unreadCount, setUnreadCount] = useState(0);
 
+  /**
+   * 外部カレンダー（Google / TimeTree）から取り込んだ予定。
+   *
+   * **取り込みに失敗しても本体の表示は止めない。** Edge Function `sync-ics` が
+   * 未デプロイのうちは必ず失敗するので、ここで握りつぶして
+   * 「外部の予定が出ないだけ」に留める（設定画面には失敗理由が出る）。
+   */
+  const [externalEvents, setExternalEvents] = useState<ExternalEvent[]>([]);
+  const [hasExternalCalendar, setHasExternalCalendar] = useState(false);
+
+  const loadExternal = useCallback(() => {
+    getExternalCalendars()
+      .then((list) => setHasExternalCalendar(list.some((c) => c.enabled)))
+      .catch(() => setHasExternalCalendar(false));
+    getExternalEvents()
+      .then(setExternalEvents)
+      .catch(() => setExternalEvents([]));
+  }, []);
+
   const retryAll = useCallback(() => {
     loadProjects();
     loadStreams();
     loadAvailabilities();
     loadMembers();
     loadTasks();
+    loadExternal();
     supabase.auth.getSession().then(({ data }) => setMyId(data.session?.user.id ?? null));
     // 失敗しても画面は出したいので握りつぶす（バッジが出ないだけ）
     getNotifications()
       .then((list) => setUnreadCount(list.filter((n) => n.read_at === null).length))
       .catch(() => {});
-  }, [loadProjects, loadStreams, loadAvailabilities, loadMembers, loadTasks]);
+  }, [loadProjects, loadStreams, loadAvailabilities, loadMembers, loadTasks, loadExternal]);
 
   // マウント時とタブ復帰時に読み込む。別画面で配信を登録・削除・回答した結果を反映する。
   useFocusEffect(retryAll);
@@ -185,9 +207,10 @@ export default function CalendarScreen() {
       streams,
       availabilities,
       memberCount: members.length,
+      externalEvents,
     });
     return groupEventsByDate(events);
-  }, [projects, streams, availabilities, members]);
+  }, [projects, streams, availabilities, members, externalEvents]);
 
   const selectedEvents = selectedDate ? (eventsByDate[selectedDate] ?? []) : [];
 
@@ -297,7 +320,7 @@ export default function CalendarScreen() {
       </PixelFrame>
 
       {/* 凡例は場所を食うので、セルがチップ表示になる幅のときだけ出す */}
-      {!compact && <CalendarLegend />}
+      {!compact && <CalendarLegend showExternal={hasExternalCalendar} />}
 
       <View style={styles.weekdayRow}>
         {WEEKDAY_LABELS.map((label, i) => (

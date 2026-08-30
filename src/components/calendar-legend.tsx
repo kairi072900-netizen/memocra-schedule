@@ -22,11 +22,16 @@ import {
  *
  * 狭い画面では場所を食うので、呼び出し側が幅を見て出し分ける
  * （カレンダーのセルがドット表示になる幅では出さない）。
+ *
+ * 【外部カレンダー】Google / TimeTree から取り込んだ予定は**4つの種別の外側**に
+ * 独立した1項目として置く。種別に5つ目を足すのではないことを、区切り線で示す。
+ * `showExternal` は外部カレンダーを1つでも登録しているときだけ true にする
+ * （使っていない人に無関係な凡例を見せない）。
  */
 const KINDS = Object.keys(SCHEDULE_KIND) as ScheduleKindToken[];
 const STATUSES = Object.keys(ATTENDANCE_STATUS) as AttendanceStatusToken[];
 
-export function CalendarLegend() {
+export function CalendarLegend({ showExternal = false }: { showExternal?: boolean }) {
   return (
     <View style={styles.container}>
       {KINDS.map((k) => (
@@ -47,6 +52,17 @@ export function CalendarLegend() {
           <Text style={styles.label}>{ATTENDANCE_STATUS[s].label}</Text>
         </View>
       ))}
+
+      {showExternal && (
+        <>
+          <View style={styles.divider} />
+          <View style={styles.item}>
+            {/* 色ではなく文字で示す。チップ側の目印と揃える（§3.4） */}
+            <Text style={styles.externalMark}>外</Text>
+            <Text style={styles.label}>外部カレンダー</Text>
+          </View>
+        </>
+      )}
     </View>
   );
 }
@@ -63,6 +79,7 @@ const styles = StyleSheet.create({
   },
   item: { flexDirection: 'row', alignItems: 'center', gap: SPACING.xs },
   label: { fontSize: FONT_SIZE.body, color: COLORS.textMuted },
+  externalMark: { fontSize: FONT_SIZE.body, color: COLORS.textMuted },
   divider: {
     width: BORDER_WIDTH.normal,
     height: LAYOUT.iconSize,

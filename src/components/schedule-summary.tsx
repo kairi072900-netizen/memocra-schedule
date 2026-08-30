@@ -165,12 +165,18 @@ function SummaryRow({
   const kind = SCHEDULE_KIND[event.kind];
   const status = event.attendance ? ATTENDANCE_STATUS[event.attendance] : null;
   const answers = event.stream_id ? answersOf(event.stream_id) : null;
+  // 外部カレンダーの予定は種別の色を持たない（`schedule-chip.tsx` と同じ扱い）
+  const external = event.source === 'external';
 
   return (
     <Pressable style={styles.row} onPress={() => onPress(event)}>
       <View style={styles.rowTop}>
-        <PixelIcon name={event.kind} size={LAYOUT.iconSize} color={kind.color} />
-        <Text style={styles.rowKind}>{kind.label}</Text>
+        {external ? (
+          <Text style={styles.rowKind}>外</Text>
+        ) : (
+          <PixelIcon name={event.kind} size={LAYOUT.iconSize} color={kind.color} />
+        )}
+        <Text style={styles.rowKind}>{external ? '外部カレンダー' : kind.label}</Text>
         <Text style={styles.rowTime}>
           {showDate ? `${shortDate(event.date)} ` : ''}
           {event.time}

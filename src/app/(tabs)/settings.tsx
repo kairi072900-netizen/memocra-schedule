@@ -4,6 +4,7 @@ import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Text } from '@/components/app-text';
+import { ExternalCalendars } from '@/components/external-calendars';
 import { PixelFrame } from '@/components/pixel/frame';
 import { BORDER_WIDTH, COLORS, FONT_SIZE, LAYOUT, LONG_TEXT, SPACING } from '@/constants/theme';
 import { useSession } from '@/lib/auth';
@@ -46,6 +47,11 @@ export default function SettingsScreen() {
           >
             <Text style={styles.link}>名前・役割・識別色を変える ›</Text>
           </Pressable>
+        </PixelFrame>
+
+        <PixelFrame style={styles.card}>
+          <Text style={styles.sectionTitle}>外部カレンダーの取り込み</Text>
+          <ExternalCalendars />
         </PixelFrame>
 
         <PixelFrame style={styles.card}>

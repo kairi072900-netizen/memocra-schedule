@@ -2,6 +2,8 @@ import { supabase } from '@/lib/supabase';
 import type {
   Availability,
   AvailabilityAnswer,
+  ExternalCalendar,
+  ExternalEvent,
   Goal,
   GoalHorizon,
   GoalScope,
@@ -451,4 +453,105 @@ export async function deleteGoal(id: string): Promise<void> {
   if (error) {
     throw new Error(`目標の削除に失敗しました: ${error.message}`);
   }
+}
+
+// ---------------------------------------------------------------------------
+// 外部カレンダー（Google / TimeTree の公開 ICS URL）
+//
+// **読み取り専用の連携。** 取り込みは Edge Function `sync-ics` が行う
+// （ブラウザから ICS を直接 fetch すると CORS で弾かれるため）。
+// 要件定義書には無く、ユーザーの要望で足した機能。
+// ---------------------------------------------------------------------------
+
+export async function getExternalCalendars(): Promise<ExternalCalendar[]> {
+  const { data, error } = await supabase
+    .from('external_calendars')
+    .select('*')
+    .order('created_at', { ascending: true });
+
+  if (error) {
+    throw new Error(`外部カレンダーの取得に失敗しました: ${error.message}`);
+  }
+  return data;
+}
+
+export async function getExternalEvents(): Promise<ExternalEvent[]> {
+  const { data, error } = await supabase
+    .from('external_events')
+    .select('*')
+    .order('starts_at', { ascending: true });
+
+  if (error) {
+    throw new Error(`外部カレンダーの予定の取得に失敗しました: ${error.message}`);
+  }
+  return data;
+}
+
+export async function createExternalCalendar(input: {
+  label: string;
+  ics_url: string;
+}): Promise<ExternalCalendar> {
+  const { data, error } = await supabase
+    .from('external_calendars')
+    .insert(input)
+    .select()
+    .single();
+
+  if (error) {
+    throw new Error(`外部カレンダーの登録に失敗しました: ${error.message}`);
+  }
+  return data;
+}
+
+export async function updateExternalCalendar(
+  id: string,
+  patch: Partial<Pick<ExternalCalendar, 'label' | 'ics_url' | 'enabled'>>,
+): Promise<ExternalCalendar> {
+  const { data, error } = await supabase
+    .from('external_calendars')
+    .update(patch)
+    .eq('id', id)
+    .select()
+    .single();
+
+  if (error) {
+    throw new Error(`外部カレンダーの更新に失敗しました: ${error.message}`);
+  }
+  return data;
+}
+
+/** 取り込んだ予定は FK の `on delete cascade` で一緒に消える。 */
+export async function deleteExternalCalendar(id: string): Promise<void> {
+  const { error } = await supabase.from('external_calendars').delete().eq('id', id);
+  if (error) {
+    throw new Error(`外部カレンダーの削除に失敗しました: ${error.message}`);
+  }
+}
+
+export interface SyncIcsResult {
+  synced: number;
+  results: { id: string; label: string; count: number; error: string | null }[];
+}
+
+/**
+ * 登録済みの外部カレンダーをまとめて取り込み直す。
+ *
+ * Edge Function `sync-ics` を呼ぶ。`functions.invoke` はログイン中のユーザーの
+ * JWT を自動で載せるので、関数側は RLS 越しにしかデータを触れない（§3.5）。
+ *
+ * **関数が未デプロイのうちは失敗する。** 呼び出し側でエラーを画面に出し、
+ * カレンダー本体の表示は止めないこと。
+ */
+export async function syncExternalCalendars(): Promise<SyncIcsResult> {
+  const { data, error } = await supabase.functions.invoke<SyncIcsResult>('sync-ics', {
+    body: {},
+  });
+
+  if (error) {
+    throw new Error(`外部カレンダーの取り込みに失敗しました: ${error.message}`);
+  }
+  if (!data) {
+    throw new Error('外部カレンダーの取り込みが空の応答を返しました');
+  }
+  return data;
 }

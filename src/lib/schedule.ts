@@ -8,7 +8,7 @@
 // 型のみのimport。実行時にはtheme.tsへ依存しないので lib の純粋性は保たれる。
 // トークン名を再定義せずに済み、theme.ts とのズレも起きない。
 import type { AnswerBadgeToken, AttendanceStatusToken, ScheduleKindToken } from '@/constants/theme';
-import type { Availability, Member, Project, Stream } from '@/types';
+import type { Availability, ExternalEvent, Member, Project, Stream } from '@/types';
 
 export interface ScheduleEvent {
   id: string;
@@ -16,12 +16,22 @@ export interface ScheduleEvent {
   date: string;
   kind: ScheduleKindToken;
   title: string;
-  /** 'HH:MM'。予定カードに出す。 */
+  /** 'HH:MM'。予定カードに出す。終日の外部予定は空文字。 */
   time: string;
   /** 配信予定のみ。出欠の集約結果。 */
   attendance?: AttendanceStatusToken;
   /** 配信予定のみ。個人の回答を引くためのキー。 */
   stream_id?: string;
+  /**
+   * この予定がどこから来たか。
+   *
+   * 'external' は Google カレンダー / TimeTree から取り込んだもの。
+   * **`SCHEDULE_KIND` の4種類は増やさない**（増やすと凡例が4→5になり、
+   * 「凡例を画面ごとに変えない」§3.4 の約束と1画面に収める制約の両方に響く）。
+   * 代わりにこのフラグで、チップ側が灰色の別スタイルで描く。
+   * 既定は 'internal'（省略時は自前の予定）。
+   */
+  source?: 'internal' | 'external';
 }
 
 /** ISO日時から日付部分だけ取り出す。'2026-08-07T19:00:00+09:00' → '2026-08-07' */
@@ -60,6 +70,8 @@ export interface BuildScheduleInput {
   streams: Stream[];
   availabilities: Availability[];
   memberCount: number;
+  /** 取り込んだ外部カレンダーの予定。未取得なら省略できる。 */
+  externalEvents?: ExternalEvent[];
 }
 
 /** 3つのソースを1本の予定配列にまとめる。日付順にソート済みで返す。 */
@@ -68,6 +80,7 @@ export function buildScheduleEvents({
   streams,
   availabilities,
   memberCount,
+  externalEvents = [],
 }: BuildScheduleInput): ScheduleEvent[] {
   const events: ScheduleEvent[] = [];
 
@@ -103,6 +116,19 @@ export function buildScheduleEvents({
       time: timeOf(s.starts_at),
       attendance: aggregateAttendance(answers, memberCount),
       stream_id: s.id,
+    });
+  }
+
+  // 外部カレンダーの予定。**種別の色は持たせない**（'shoot' を借りているだけで、
+  // 描画側は `source === 'external'` を見て灰色で出す）
+  for (const e of externalEvents) {
+    events.push({
+      id: `ext-${e.id}`,
+      date: dateOf(e.starts_at),
+      kind: 'shoot',
+      title: e.title,
+      time: e.all_day ? '' : timeOf(e.starts_at),
+      source: 'external',
     });
   }
 
