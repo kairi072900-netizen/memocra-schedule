@@ -16,15 +16,39 @@ import type { Member, Project, Task } from '@/types';
  * 呼び出し側は必ずエラーを画面に出し、**AI以外の機能は止めないこと。**
  */
 
-/** Edge Function が落ちている／未デプロイのときに出す共通の言い回し。 */
-function aiError(e: unknown): Error {
+/**
+ * Edge Function の呼び出しエラーを、**中身の分かる文言**にして返す。
+ *
+ * `supabase.functions.invoke` は非2xxのとき `FunctionsHttpError` を返し、その
+ * `.message` は「Edge Function returned a non-2xx status code」という固定文で
+ * 原因が分からない。**実際のエラーは `error.context`（Response）のボディにある**
+ * （関数側は `{ error: "..." }` を返している）ので、それを読み出す。
+ */
+async function aiError(e: unknown): Promise<Error> {
+  const context = (e as { context?: unknown }).context;
+  if (context instanceof Response) {
+    try {
+      const body = await context.clone().json();
+      if (body && typeof body.error === 'string') {
+        return new Error(body.error);
+      }
+    } catch {
+      // JSON でなければ素のテキストを試す
+      try {
+        const text = await context.clone().text();
+        if (text) return new Error(text.slice(0, 500));
+      } catch {
+        // どちらも読めなければ下の汎用文言に落とす
+      }
+    }
+  }
   const detail = e instanceof Error ? e.message : 'AIの呼び出しに失敗しました';
   return new Error(`${detail}\n（AI機能には Edge Function「ai」のデプロイが必要です）`);
 }
 
 async function callAi<T>(payload: Record<string, unknown>): Promise<T> {
   const { data, error } = await supabase.functions.invoke<T>('ai', { body: payload });
-  if (error) throw aiError(error);
+  if (error) throw await aiError(error);
   if (!data) throw new Error('AIが空の応答を返しました');
   // 関数側は失敗時に { error } を返すので、それも拾う
   const maybeError = (data as { error?: string }).error;

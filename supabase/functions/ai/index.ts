@@ -61,7 +61,10 @@ Deno.serve(async (req: Request) => {
         return errorResponse(`知らない用途です: ${task}`);
     }
   } catch (e) {
-    return errorResponse(e instanceof Error ? e.message : 'AIの処理に失敗しました', 500);
+    const message = e instanceof Error ? e.message : 'AIの処理に失敗しました';
+    // Dashboard の Logs タブに残す（原因の切り分け用）
+    console.error(`[ai:${task}]`, message);
+    return errorResponse(message, 500);
   }
 });
 

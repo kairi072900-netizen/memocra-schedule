@@ -549,12 +549,39 @@ export async function syncExternalCalendars(): Promise<SyncIcsResult> {
   });
 
   if (error) {
-    throw new Error(`外部カレンダーの取り込みに失敗しました: ${error.message}`);
+    // `error.message` は「non-2xx status code」の固定文で原因が分からない。
+    // 関数側は `{ error: "..." }` を返すので、Response のボディから実際の文言を取る
+    throw new Error(await edgeFunctionErrorMessage(error, '外部カレンダーの取り込みに失敗しました'));
   }
   if (!data) {
     throw new Error('外部カレンダーの取り込みが空の応答を返しました');
   }
   return data;
+}
+
+/**
+ * `supabase.functions.invoke` のエラーから、**中身の分かる文言**を取り出す。
+ *
+ * `FunctionsHttpError.context` は Response。関数が返した `{ error: "..." }` を
+ * そこから読む（`src/lib/ai.ts` の `aiError` と同じ考え方）。
+ */
+async function edgeFunctionErrorMessage(error: unknown, fallback: string): Promise<string> {
+  const context = (error as { context?: unknown }).context;
+  if (context instanceof Response) {
+    try {
+      const body = await context.clone().json();
+      if (body && typeof body.error === 'string') return body.error;
+    } catch {
+      try {
+        const text = await context.clone().text();
+        if (text) return text.slice(0, 500);
+      } catch {
+        // 読めなければ fallback へ
+      }
+    }
+  }
+  const detail = error instanceof Error ? error.message : '';
+  return detail ? `${fallback}: ${detail}` : fallback;
 }
 
 // ---------------------------------------------------------------------------
