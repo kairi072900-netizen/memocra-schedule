@@ -179,6 +179,28 @@ const ICONS = {
     '........',
     '...XX...',
   ],
+  /** AI。魔法陣（§3.3。Minecraft の意匠は使わない）。 */
+  ai: [
+    '..XXXX..',
+    '.X.oo.X.',
+    'X.oXXo.X',
+    'XoX..XoX',
+    'XoX..XoX',
+    'X.oXXo.X',
+    '.X.oo.X.',
+    '..XXXX..',
+  ],
+  /** 議事録。巻物。 */
+  meetings: [
+    'XXXXXXXX',
+    'XooooooX',
+    'XoXXXXoX',
+    'XooooooX',
+    'XoXXXXoX',
+    'XooooooX',
+    'XoXXXooX',
+    'XXXXXXXX',
+  ],
   /** 目標。旗（RPG風。到達点の意）。 */
   goals: [
     '.XX.....',

@@ -5,6 +5,7 @@ import type {
   ExternalCalendar,
   ExternalEvent,
   Goal,
+  Meeting,
   GoalHorizon,
   GoalScope,
   GoalStatus,
@@ -554,4 +555,90 @@ export async function syncExternalCalendars(): Promise<SyncIcsResult> {
     throw new Error('外部カレンダーの取り込みが空の応答を返しました');
   }
   return data;
+}
+
+// ---------------------------------------------------------------------------
+// 議事録（meetings）と会議の音声
+//
+// 録音そのものはアプリの外（iPhone のボイスメモ等）で行う。ここは
+// 「ファイルを置く」「AIが作った議事録を保存する」だけ。
+// 文字起こしと要約は Edge Function `ai`（`src/lib/ai.ts` 経由）。
+// ---------------------------------------------------------------------------
+
+export async function getMeetings(): Promise<Meeting[]> {
+  const { data, error } = await supabase
+    .from('meetings')
+    .select('*')
+    .order('held_on', { ascending: false });
+
+  if (error) {
+    throw new Error(`議事録の取得に失敗しました: ${error.message}`);
+  }
+  return data;
+}
+
+export type MeetingInput = Partial<
+  Pick<Meeting, 'title' | 'held_on' | 'agenda' | 'transcript' | 'minutes' | 'decisions' | 'todos' | 'audio_path'>
+>;
+
+export async function createMeeting(input: MeetingInput): Promise<Meeting> {
+  const created_by = await getCurrentUserId();
+  const { data, error } = await supabase
+    .from('meetings')
+    .insert({ ...input, created_by })
+    .select()
+    .single();
+
+  if (error) {
+    throw new Error(`議事録の保存に失敗しました: ${error.message}`);
+  }
+  return data;
+}
+
+export async function updateMeeting(id: string, patch: MeetingInput): Promise<Meeting> {
+  const { data, error } = await supabase
+    .from('meetings')
+    .update(patch)
+    .eq('id', id)
+    .select()
+    .single();
+
+  if (error) {
+    throw new Error(`議事録の更新に失敗しました: ${error.message}`);
+  }
+  return data;
+}
+
+/**
+ * 議事録を削除する。**Storage の音声ファイルは消えない**
+ * （消したい場合は Supabase の管理画面から。誤操作で音源を失わないための判断）。
+ */
+export async function deleteMeeting(id: string): Promise<void> {
+  const { error } = await supabase.from('meetings').delete().eq('id', id);
+  if (error) {
+    throw new Error(`議事録の削除に失敗しました: ${error.message}`);
+  }
+}
+
+/**
+ * 会議の録音をアップロードして、Storage 上のパスを返す。
+ *
+ * バケットは **private**（`0006_meetings.sql`）。会議の録音は私的な会話を含みうるので、
+ * 公開バケットにはしない。Edge Function が呼び出した人の権限で読みに行く。
+ */
+export async function uploadMeetingAudio(file: File): Promise<string> {
+  const userId = await getCurrentUserId();
+  // 名前の衝突を避けつつ、誰がいつ上げたかが分かるパスにする
+  const safeName = file.name.replace(/[^\w.-]/g, '_');
+  const path = `${userId}/${Date.now()}-${safeName}`;
+
+  const { error } = await supabase.storage.from('meeting-audio').upload(path, file, {
+    contentType: file.type || 'audio/m4a',
+    upsert: false,
+  });
+
+  if (error) {
+    throw new Error(`音声のアップロードに失敗しました: ${error.message}`);
+  }
+  return path;
 }

@@ -66,6 +66,20 @@ export default function SettingsScreen() {
         </PixelFrame>
 
         <PixelFrame style={styles.card}>
+          <Text style={styles.sectionTitle}>AI</Text>
+          <Text style={styles.hint}>
+            企画・タイトル・サムネの壁打ちと、今の状況のまとめ。
+            予定の読み取りは新規登録画面、締切の調整は企画詳細にあります。
+          </Text>
+          <Pressable style={styles.linkRow} onPress={() => router.push({ pathname: '/ai' })}>
+            <Text style={styles.link}>AIに相談する ›</Text>
+          </Pressable>
+          <Pressable style={styles.linkRow} onPress={() => router.push({ pathname: '/meetings' })}>
+            <Text style={styles.link}>議事録を見る・作る ›</Text>
+          </Pressable>
+        </PixelFrame>
+
+        <PixelFrame style={styles.card}>
           <Text style={styles.sectionTitle}>このアプリについて</Text>
           <Text style={styles.about}>
             メモリークラフトの制作スケジュールを共有するためのアプリです。

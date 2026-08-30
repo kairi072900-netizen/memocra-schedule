@@ -277,3 +277,31 @@ export interface ExternalEvent extends TeamScoped {
   ends_at: string | null;
   all_day: boolean;
 }
+
+/**
+ * 会議の記録（要件定義書 第7章の `meetings` に、音声と抽出結果を足したもの）。
+ *
+ * **録音はアプリの外で行う**（iPhone のボイスメモ等）。アプリはファイルを受け取って
+ * 文字起こし・要約・決定事項・ToDo を作るところだけを担当する（2026-08-30 の判断）。
+ *
+ * 【`todos` を自動でタスクにしない】担当と締切を人が確定させることが
+ * このアプリの目的そのもの（CLAUDE.md §1）。抽出結果は候補として並べ、
+ * 人が選んだものだけ `tasks` に入れる。
+ */
+export interface Meeting extends TeamScoped {
+  id: string;
+  title: string;
+  /** 'YYYY-MM-DD'。 */
+  held_on: string;
+  /** 会議前に書く議題。 */
+  agenda: string | null;
+  transcript: string | null;
+  /** 要約。 */
+  minutes: string | null;
+  decisions: string[];
+  todos: string[];
+  /** Storage の meeting-audio バケット内のパス。null なら音声なし。 */
+  audio_path: string | null;
+  created_by: string | null;
+  created_at: string;
+}

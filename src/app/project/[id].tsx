@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Text } from '@/components/app-text';
 import { ErrorView, LoadingView } from '@/components/async-state';
 import { GoalCard } from '@/components/goal-card';
+import { ReplanPanel } from '@/components/replan-panel';
 import { PixelIcon } from '@/components/pixel/icon';
 import { PixelFrame } from '@/components/pixel/frame';
 import { ProjectForm } from '@/components/project-form';
@@ -22,8 +23,8 @@ import {
 import {
   createTasks,
   deleteProject,
-  getMembers,
   getGoals,
+  getMembers,
   getTasks,
   type TaskPatch,
   updateProject,
@@ -167,6 +168,23 @@ export default function ProjectDetailScreen() {
 
             {/* この企画に紐づく目標（要望「企画ごとの目標」）。編集は目標画面で行う */}
             <ProjectGoals goals={goals ?? []} projectId={project.id} todayKey={todayKey} />
+
+            {/* AIは案を出すだけ。押すまで工程は変わらない（replan-panel.tsx 冒頭） */}
+            <ReplanPanel
+              project={project}
+              tasks={projectTasks}
+              members={members ?? []}
+              todayKey={todayKey}
+              onApply={async (changes) => {
+                for (const c of changes) {
+                  const patch: TaskPatch = {};
+                  if (c.due_at !== undefined) patch.due_at = c.due_at;
+                  if (c.assignee_id !== undefined) patch.assignee_id = c.assignee_id;
+                  if (Object.keys(patch).length > 0) await updateTask(c.task_id, patch);
+                }
+                load();
+              }}
+            />
 
             <Text style={styles.sectionHeading}>
               工程（{openTasks(projectTasks).length}/{projectTasks.length} 未完了）

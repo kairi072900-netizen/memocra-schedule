@@ -1,18 +1,20 @@
 import { router, useLocalSearchParams } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Text } from '@/components/app-text';
 import { ErrorView, LoadingView } from '@/components/async-state';
+import { AiCompose } from '@/components/ai-compose';
 import { PixelFrame } from '@/components/pixel/frame';
 import { SceneryBand } from '@/components/pixel/scenery';
-import { ProjectForm } from '@/components/project-form';
-import { StreamForm } from '@/components/stream-form';
+import { ProjectForm, type ProjectFormInitial } from '@/components/project-form';
+import { StreamForm, type StreamFormInitial } from '@/components/stream-form';
 import { BORDER_WIDTH, COLORS, FONT_SIZE, LAYOUT, SPACING } from '@/constants/theme';
 import { createProject, createStream, createTasks, getMembers } from '@/lib/api';
 import { dateToKey } from '@/lib/calendar';
-import { isValidDateKey, toIsoAt } from '@/lib/date-input';
+import type { ParsedSchedule } from '@/lib/ai';
+import { isValidDateKey, isValidTime, toIsoAt } from '@/lib/date-input';
 import { buildTasksFromTemplate, pastDueTasks } from '@/lib/task-template';
 import type { Member } from '@/types';
 
@@ -41,6 +43,17 @@ export default function NewScreen() {
     typeof params.date === 'string' && isValidDateKey(params.date) ? params.date : null;
 
   const [mode, setMode] = useState<Mode>(params.mode === 'stream' ? 'stream' : 'project');
+  const todayKey = useMemo(() => dateToKey(new Date()), []);
+
+  /**
+   * AI が読み取った内容。`presetDate` より優先してフォームの初期値になる。
+   * **フォームを埋めるだけで、登録は人がボタンを押す**（CLAUDE.md §1）。
+   *
+   * `formKey` は読み取るたびに増やす。フォームは `initial` をマウント時にしか
+   * 見ないので、key を変えて作り直さないと2回目以降の読み取りが反映されない。
+   */
+  const [parsed, setParsed] = useState<ParsedSchedule | null>(null);
+  const [formKey, setFormKey] = useState(0);
   const [members, setMembers] = useState<Member[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   /** 締切が過去日になった工程の警告（要件定義書 F2）。登録は止めない。 */
@@ -81,6 +94,15 @@ export default function NewScreen() {
           </View>
         </PixelFrame>
 
+        <AiCompose
+          todayKey={todayKey}
+          onParsed={(p) => {
+            setParsed(p);
+            setMode(p.mode);
+            setFormKey((n) => n + 1);
+          }}
+        />
+
         {warning && <Text style={styles.warning}>{warning}</Text>}
 
         {error ? (
@@ -89,17 +111,8 @@ export default function NewScreen() {
           <LoadingView label="読み込み中…" />
         ) : mode === 'project' ? (
           <ProjectForm
-            initial={
-              presetDate
-                ? {
-                    title: '',
-                    kind: 'long',
-                    publish_at: toIsoAt(presetDate, DEFAULT_PUBLISH_TIME),
-                    shoot_at: null,
-                    memo: null,
-                  }
-                : undefined
-            }
+            key={`project-${formKey}`}
+            initial={projectInitial(parsed, presetDate)}
             submitLabel="企画を登録する"
             offerTemplate
             onSubmit={async (input, applyTemplate) => {
@@ -129,17 +142,8 @@ export default function NewScreen() {
           />
         ) : (
           <StreamForm
-            initial={
-              presetDate
-                ? {
-                    title: '',
-                    starts_at: toIsoAt(presetDate, DEFAULT_STREAM_TIME),
-                    duration_min: 60,
-                    platform: 'youtube',
-                    memo: null,
-                  }
-                : undefined
-            }
+            key={`stream-${formKey}`}
+            initial={streamInitial(parsed, presetDate)}
             members={members}
             submitLabel="配信を登録する"
             onSubmit={async (input) => {
@@ -151,6 +155,48 @@ export default function NewScreen() {
       </ScrollView>
     </SafeAreaView>
   );
+}
+
+/**
+ * フォームの初期値を組み立てる。優先順位は **AIの読み取り > カレンダーの日付 > なし**。
+ * AI が時刻を読み取れなかったときは既定の時刻で埋める（日付だけ来たときと同じ扱い）。
+ */
+function projectInitial(
+  parsed: ParsedSchedule | null,
+  presetDate: string | null,
+): ProjectFormInitial | undefined {
+  const date =
+    (parsed?.date && isValidDateKey(parsed.date) ? parsed.date : null) ?? presetDate;
+  if (!parsed && !date) return undefined;
+
+  const time = parsed?.time && isValidTime(parsed.time) ? parsed.time : DEFAULT_PUBLISH_TIME;
+  return {
+    title: parsed?.mode === 'project' ? parsed.title : '',
+    kind: (parsed?.mode === 'project' && parsed.kind) || 'long',
+    publish_at: date ? toIsoAt(date, time) : null,
+    shoot_at: null,
+    memo: parsed?.note ?? null,
+  };
+}
+
+function streamInitial(
+  parsed: ParsedSchedule | null,
+  presetDate: string | null,
+): StreamFormInitial | undefined {
+  const date =
+    (parsed?.date && isValidDateKey(parsed.date) ? parsed.date : null) ?? presetDate;
+  if (!parsed && !date) return undefined;
+
+  const time = parsed?.time && isValidTime(parsed.time) ? parsed.time : DEFAULT_STREAM_TIME;
+  return {
+    title: parsed?.mode === 'stream' ? parsed.title : '',
+    // 日付が読み取れなかったときは空文字にする。
+    // `toIsoAt('', time)` を渡すとフォームが `.slice(0, 10)` で壊れた値を拾う
+    starts_at: date ? toIsoAt(date, time) : '',
+    duration_min: 60,
+    platform: 'youtube',
+    memo: parsed?.note ?? null,
+  };
 }
 
 function ModeButton({
