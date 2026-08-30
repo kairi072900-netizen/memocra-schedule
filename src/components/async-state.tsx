@@ -2,7 +2,8 @@ import { StyleSheet, View } from 'react-native';
 
 import { Text } from '@/components/app-text';
 import { PixelFrame } from '@/components/pixel/frame';
-import { COLORS, FONT_SIZE, SPACING } from '@/constants/theme';
+import { SceneryCastle } from '@/components/pixel/scenery';
+import { COLORS, FONT_SIZE, LAYOUT, SPACING } from '@/constants/theme';
 
 /**
  * データ取得中/失敗時の共通表示。
@@ -22,6 +23,8 @@ export function ErrorView({ message, onRetry }: { message: string; onRetry: () =
   return (
     <View style={styles.container}>
       <PixelFrame style={styles.frame}>
+        {/* 失敗して何も出せない画面＝空状態。風景を出してよい場所（§3.1） */}
+        <SceneryCastle width={LAYOUT.sceneryWidth} />
         <Text style={styles.text}>{message}</Text>
         <Text style={styles.retry} onPress={onRetry}>
           ↻ もう一度試す

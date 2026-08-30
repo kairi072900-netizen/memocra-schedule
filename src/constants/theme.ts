@@ -37,6 +37,18 @@ const palette = {
   cyan: '#3AA6A6',
   /** モーダルの背後を覆う色。ぼかしではなく単純な半透明の板（§3.1）。 */
   scrim: 'rgba(58, 42, 28, 0.6)',
+
+  // 背景の風景ドット絵（`components/pixel/scenery.tsx`）。
+  // **Minecraft の草ブロック・土・木材のテクスチャは使わない**（§3.3）。
+  // 羊皮紙色の地に馴染むよう、彩度を落としたRPG風の配色にしてある。
+  sky: '#A8C4D8',
+  skyDeep: '#87A8C4',
+  cloud: '#F0F4F7',
+  grass: '#7FA05A',
+  grassDark: '#5F7D42',
+  stone: '#9A9086',
+  stoneDark: '#6F675E',
+  flag: '#B0453D',
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -114,6 +126,23 @@ export const COLORS = {
    * 影と同じくぼかしは使わず、単色の板で覆うだけにする（§3.1）。
    */
   backdrop: palette.scrim,
+
+  /**
+   * 背景の風景ドット絵の配色。
+   *
+   * 【使い所を広げないこと】§3.1 の明示ルール:
+   * 「背景の風景画像は**ヘッダー帯と空状態の画面だけに限定**し、
+   *   リスト領域は無地の羊皮紙色にする」。
+   * 縦スクロールする領域に敷くと破綻する（要件定義書 12.6 #6）。
+   */
+  sky: palette.sky,
+  skyDeep: palette.skyDeep,
+  cloud: palette.cloud,
+  grass: palette.grass,
+  grassDark: palette.grassDark,
+  stone: palette.stone,
+  stoneDark: palette.stoneDark,
+  flag: palette.flag,
 } as const;
 
 export type ColorToken = keyof typeof COLORS;
@@ -424,6 +453,13 @@ export const LAYOUT = {
    * 7列 × 44 = 308px だと狭い端末でシートが画面幅を超えるため、ここだけ40pxにしている。
    */
   pickerCellSize: 40,
+  /**
+   * 空状態に置く風景ドット絵（`components/pixel/scenery.tsx`）の目安の幅。
+   * 32ドット幅なので、1ドット=8pxちょうどになる 256 にしてある（にじみ防止。§3.1）。
+   */
+  sceneryWidth: SPACING.xxl * 8,
+  /** ヘッダーに敷く風景の帯の高さ。8行なので1ドット=4pxちょうど。 */
+  sceneryBandHeight: SPACING.xxl,
 } as const;
 
 // ---------------------------------------------------------------------------

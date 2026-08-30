@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Text } from '@/components/app-text';
 import { ErrorView } from '@/components/async-state';
 import { PixelFrame } from '@/components/pixel/frame';
+import { SceneryCastle } from '@/components/pixel/scenery';
 import { BORDER_WIDTH, COLORS, FONT_SIZE, LAYOUT, SPACING } from '@/constants/theme';
 import { supabase } from '@/lib/supabase';
 
@@ -88,6 +89,8 @@ export default function LoginScreen() {
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
         <PixelFrame style={styles.frame}>
+          {/* 起動画面は風景を出してよい場所（要件定義書 12.5 / §3.1） */}
+          <SceneryCastle width={LAYOUT.sceneryWidth} />
           <Text style={styles.title}>メモクラ</Text>
           <Text style={styles.subtitle}>スケジュール管理</Text>
 

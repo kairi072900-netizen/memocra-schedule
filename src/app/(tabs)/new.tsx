@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Text } from '@/components/app-text';
 import { ErrorView, LoadingView } from '@/components/async-state';
 import { PixelFrame } from '@/components/pixel/frame';
+import { SceneryBand } from '@/components/pixel/scenery';
 import { ProjectForm } from '@/components/project-form';
 import { StreamForm } from '@/components/stream-form';
 import { BORDER_WIDTH, COLORS, FONT_SIZE, LAYOUT, SPACING } from '@/constants/theme';
@@ -61,6 +62,10 @@ export default function NewScreen() {
     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
       <ScrollView contentContainerStyle={styles.body}>
         <PixelFrame style={styles.header}>
+          {/* ヘッダー帯は風景を出してよい場所（§3.1）。
+              **カレンダーのヘッダーには置いていない** — あちらは2行に詰めて
+              1画面に収めている最中で、帯を足すと6行のグリッドが押し出されるため */}
+          <SceneryBand width={LAYOUT.sceneryWidth} height={LAYOUT.sceneryBandHeight} />
           <Text style={styles.title}>新規登録</Text>
           <View style={styles.modeRow}>
             <ModeButton
@@ -169,7 +174,7 @@ const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: COLORS.background },
   body: { paddingBottom: SPACING.xxl },
   header: { margin: SPACING.sm, padding: SPACING.sm, alignItems: 'center' },
-  title: { fontSize: FONT_SIZE.title, marginBottom: SPACING.sm },
+  title: { fontSize: FONT_SIZE.title, marginTop: SPACING.sm, marginBottom: SPACING.sm },
   modeRow: { flexDirection: 'row', gap: SPACING.sm, flexWrap: 'wrap', justifyContent: 'center' },
   modeButton: {
     minHeight: LAYOUT.minTapSize,

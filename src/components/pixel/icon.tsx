@@ -18,7 +18,8 @@ import type { Member } from '@/types';
  * 半角スペースなど他の文字を混ぜないこと（主色で塗られてしまう）。
  */
 
-const GRID = 8;
+/** アイコンのグリッド。**アイコンだけの約束**で、`DotGrid` 自体は任意の縦横を描ける。 */
+export const ICON_GRID = 8;
 const TRANSPARENT = '.';
 const SECONDARY = 'o';
 
@@ -185,37 +186,97 @@ export type PixelIconName = keyof typeof ICONS;
 /**
  * ドットの集合を `<Rect>` で描く。
  * 隣り合うドットの継ぎ目に隙間が出ないよう、幅・高さを少しだけ重ねている。
+ *
+ * **アイコン（8×8・2色）にも風景（横長・多色）にも使う。**
+ * `viewBox` は行数と1行目の文字数から求めるので、正方形でなくてもよい。
+ * 色は文字→色のマップで受け取る。マップに無い文字は `fallback` で塗る
+ * （`.` だけは常に透明。§3.1「パターンに `.` `X` `o` 以外を混ぜないこと」の
+ *  「以外」を増やすときは、必ずマップにその文字を足すこと）。
  */
-function DotGrid({
+export function DotGrid({
   rows,
-  size,
-  primary,
-  secondary,
+  width,
+  height,
+  palette,
+  fallback,
 }: {
   rows: readonly string[];
-  size: number;
-  primary: string;
-  secondary: string;
+  width: number;
+  height: number;
+  /** 文字 → 色。例 `{ X: '#000', o: '#fff' }` */
+  palette: Record<string, string>;
+  /** マップに無い文字を塗る色。 */
+  fallback: string;
 }) {
+  const cols = rows[0]?.length ?? 0;
   return (
-    <Svg width={size} height={size} viewBox={`0 0 ${GRID} ${GRID}`}>
-      {rows.map((row, y) =>
-        [...row].map((ch, x) => {
-          if (ch === TRANSPARENT) return null;
-          return (
-            <Rect
-              key={`${x}-${y}`}
-              x={x}
-              y={y}
-              width={1.02}
-              height={1.02}
-              fill={ch === SECONDARY ? secondary : primary}
-            />
-          );
-        }),
-      )}
+    <Svg width={width} height={height} viewBox={`0 0 ${cols} ${rows.length}`}>
+      {rectsOf(rows).map(({ ch, x, y, w, h }) => (
+        <Rect
+          key={`${x}-${y}`}
+          x={x}
+          y={y}
+          // 同色の塊はまとめてあるので、重ねるのは隣の色との境目だけ
+          width={w + 0.02}
+          height={h + 0.02}
+          fill={palette[ch] ?? fallback}
+        />
+      ))}
     </Svg>
   );
+}
+
+interface DotRect {
+  ch: string;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+/**
+ * パターンを「同じ文字の長方形」の集合に畳む。透明（`.`）は落とす。
+ *
+ * 1ドット=1矩形で描くと、大きく塗る面（風景の空や草原）で
+ * **矩形の境目に筋が出る**（重なり分がアンチエイリアスされるため）。
+ * 横に繋げてから縦に繋げると、内側の境目そのものが無くなり、
+ * 描く矩形の数も大きく減る（32×16の風景で512個 → 数十個）。
+ *
+ * 貪欲法で足りる。パターンは高々32×16で、最適な分割を探す必要はない。
+ */
+function rectsOf(rows: readonly string[]): DotRect[] {
+  // 1. 各行を横方向の連続に切る
+  const runs = rows.map((row) => {
+    const out: { ch: string; x: number; w: number }[] = [];
+    let i = 0;
+    while (i < row.length) {
+      const ch = row[i];
+      let j = i + 1;
+      while (j < row.length && row[j] === ch) j++;
+      if (ch !== TRANSPARENT) out.push({ ch, x: i, w: j - i });
+      i = j;
+    }
+    return out;
+  });
+
+  // 2. 真下にまったく同じ連続があれば縦に伸ばす
+  const used = runs.map((r) => r.map(() => false));
+  const rects: DotRect[] = [];
+  for (let y = 0; y < runs.length; y++) {
+    for (let k = 0; k < runs[y].length; k++) {
+      if (used[y][k]) continue;
+      const { ch, x, w } = runs[y][k];
+      let h = 1;
+      for (let y2 = y + 1; y2 < runs.length; y2++) {
+        const k2 = runs[y2].findIndex((r, i) => !used[y2][i] && r.ch === ch && r.x === x && r.w === w);
+        if (k2 === -1) break;
+        used[y2][k2] = true;
+        h++;
+      }
+      rects.push({ ch, x, y, w, h });
+    }
+  }
+  return rects;
 }
 
 export function PixelIcon({
@@ -231,7 +292,15 @@ export function PixelIcon({
   /** 副色（'o'）。既定はカード地の明るい色＝アイコンの「中身」が抜けて見える。 */
   secondaryColor?: string;
 }) {
-  return <DotGrid rows={ICONS[name]} size={size} primary={color} secondary={secondaryColor} />;
+  return (
+    <DotGrid
+      rows={ICONS[name]}
+      width={size}
+      height={size}
+      palette={{ [SECONDARY]: secondaryColor }}
+      fallback={color}
+    />
+  );
 }
 
 /**
@@ -256,5 +325,13 @@ const AVATAR = [
 
 export function MemberAvatar({ member, size }: { member: Member; size: number }) {
   // 'X' = 髪・服（識別色） / 'o' = 肌（全員共通）
-  return <DotGrid rows={AVATAR} size={size} primary={member.color} secondary={COLORS.skin} />;
+  return (
+    <DotGrid
+      rows={AVATAR}
+      width={size}
+      height={size}
+      palette={{ [SECONDARY]: COLORS.skin }}
+      fallback={member.color}
+    />
+  );
 }
