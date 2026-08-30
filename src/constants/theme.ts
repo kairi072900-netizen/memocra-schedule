@@ -358,13 +358,16 @@ export const LAYOUT = {
    */
   compactCellWidth: 72,
   /**
-   * カレンダーのセルの高さ。6行固定なので月が変わっても高さは動かない。
+   * カレンダーのセルの高さ。**6行固定なので月が変わっても高さは動かない**（§3.1）。
    *
-   * ドット表示（狭い画面）とチップ表示（広い画面）で2値持つ。
-   * チップ表示だけ高くすることで、モバイルの縦の伸びを防ぐ。
+   * これは**狭い画面（スクロールする前提）で使う値**。
+   * 広い画面では「残りの高さ ÷ 6行」で動的に決めるので、この値は下限としてだけ効く
+   * （`calendarCellMinHeight`）。チップが潰れないよう最低限は確保する。
    */
   calendarCellHeight: SPACING.xxl * 2,
-  calendarCellHeightWide: SPACING.xxl * 3,
+  calendarCellMinHeight: SPACING.xxl * 2,
+  /** 広い画面で、カレンダーの下に置くパネル行の高さ。 */
+  panelRowHeight: SPACING.xxl * 7,
   /** 予定チップ1つぶんの高さ。アイコン＋17pxの文字が収まる大きさ。 */
   chipHeight: SPACING.xl,
   /** 予定種別・タブバーのドット絵アイコン。8×8グリッドなので8の倍数にすると1ドットが整数px。 */

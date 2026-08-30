@@ -6,7 +6,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ErrorView, LoadingView } from '@/components/async-state';
 import { Text } from '@/components/app-text';
 import { CalendarLegend } from '@/components/calendar-legend';
-import { EventCard } from '@/components/event-card';
 import { MemberAvatar, PixelIcon } from '@/components/pixel/icon';
 import { PixelFrame } from '@/components/pixel/frame';
 import { ScheduleChip } from '@/components/schedule-chip';
@@ -39,6 +38,7 @@ import {
   dateToKey,
   formatMonthLabel,
   WEEKDAY_LABELS,
+  WEEKS_IN_GRID,
   weekRangeOf,
   type YearMonth,
   yearMonthOf,
@@ -176,7 +176,6 @@ export default function CalendarScreen() {
 
   const selectedEvents = selectedDate ? (eventsByDate[selectedDate] ?? []) : [];
 
-  const todayEvents = eventsByDate[todayKey] ?? [];
   /** 今週（日〜土）の公開予定だけを日付順に。撮影・配信は「今日の予定」側で見る */
   const weekPublishEvents = useMemo(() => {
     const { start, end } = weekRangeOf(todayKey);
@@ -212,26 +211,35 @@ export default function CalendarScreen() {
   // セル幅が狭いときは文字を捨ててドット表示にする（要件定義書 12.3）
   const compact = cellWidth < LAYOUT.compactCellWidth;
 
+  /**
+   * 広い画面ではスクロールさせず1画面に収める。
+   * グリッド領域に残された高さを6行で割ってセルの高さを決める
+   * （**6行固定なので月が変わっても高さは動かない**。CLAUDE.md §3.1）。
+   * 狭い画面はスクロール前提なので固定値のまま。
+   */
+  const [gridAreaHeight, setGridAreaHeight] = useState(0);
+  const onGridAreaLayout = useCallback(
+    (e: LayoutChangeEvent) => setGridAreaHeight(e.nativeEvent.layout.height),
+    [],
+  );
+  const cellHeight = compact
+    ? LAYOUT.calendarCellHeight
+    : Math.max(LAYOUT.calendarCellMinHeight, gridAreaHeight / WEEKS_IN_GRID);
+
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']} onLayout={onScreenLayout}>
+      {/* ヘッダーは2行に収める。iPhone だと縦の余裕が無く、
+          4行使うと6行のグリッドが最初の画面から押し出される（実機で踏んだ） */}
       <PixelFrame style={styles.header}>
-        {/* 月ラベルは独立した行に置く。ボタンと同じ行にすると狭い画面で「2026年8/月」と折り返す */}
-        <Text style={styles.monthLabel} numberOfLines={1}>
-          {formatMonthLabel(cursor)}
-        </Text>
-        {/* 月／週の切り替え。週表示の中身は後のフェーズ（要件定義書 F6） */}
-        <View style={styles.viewToggle}>
-          <Pressable style={[styles.toggleButton, styles.toggleButtonActive]}>
-            <Text style={styles.navLabel}>カレンダー</Text>
-          </Pressable>
-          <Pressable style={styles.toggleButton} onPress={() => setWeekViewNote(true)}>
-            <Text style={styles.navLabelMuted}>週表示</Text>
-          </Pressable>
-        </View>
-        {weekViewNote && <Text style={styles.note}>週表示は準備中です</Text>}
-
         <View style={styles.headerRow}>
           <NavButton label="‹" onPress={() => goToMonth(addMonths(cursor, -1))} />
+          <Text style={styles.monthLabel} numberOfLines={1}>
+            {formatMonthLabel(cursor)}
+          </Text>
+          <NavButton label="›" onPress={() => goToMonth(addMonths(cursor, 1))} />
+        </View>
+
+        <View style={styles.headerRow}>
           <NavButton
             label="今日"
             onPress={() => {
@@ -239,12 +247,19 @@ export default function CalendarScreen() {
               setSelectedDate(todayKey);
             }}
           />
-          <NavButton label="›" onPress={() => goToMonth(addMonths(cursor, 1))} />
           {/* 新規登録はタブにもあるが、カレンダーを見ながら足せる導線をここにも置く */}
           <Pressable onPress={() => router.push('/new')} style={styles.primaryButton}>
             <PixelIcon name="plus" size={LAYOUT.iconSize} color={COLORS.text} />
             <Text style={styles.navLabel}>新規登録</Text>
           </Pressable>
+
+          {/* 月／週の切り替え。中身が未実装のスタブなので、縦に余裕がある広い画面だけ出す
+              （要件定義書 F6 で実装したらモバイルにも出すか見直す） */}
+          {!compact && (
+            <Pressable style={styles.toggleButton} onPress={() => setWeekViewNote(true)}>
+              <Text style={styles.navLabelMuted}>週表示</Text>
+            </Pressable>
+          )}
 
           {/* お知らせ。未読があるときだけ件数を出す */}
           <Pressable onPress={() => router.push('/notifications')} style={styles.bellButton}>
@@ -263,20 +278,7 @@ export default function CalendarScreen() {
           </Pressable>
         </View>
 
-        {/* メンバー。色だけで判別させないため名前を必ず併記する（CLAUDE.md §3.4）。
-            サイドバーが出ている広い画面では重複するので、狭いときだけ出す */}
-        {compact && members && members.length > 0 && (
-          <View style={styles.memberRow}>
-            {members.map((m) => (
-              <View key={m.id} style={styles.memberItem}>
-                <MemberAvatar member={m} size={LAYOUT.avatarSize} />
-                <Text style={styles.memberName} numberOfLines={1}>
-                  {m.name}
-                </Text>
-              </View>
-            ))}
-          </View>
-        )}
+        {weekViewNote && <Text style={styles.note}>週表示は準備中です</Text>}
       </PixelFrame>
 
       {/* 凡例は場所を食うので、セルがチップ表示になる幅のときだけ出す */}
@@ -303,64 +305,39 @@ export default function CalendarScreen() {
       ) : !projects || !streams || !availabilities || !members ? (
         <LoadingView label="予定を読み込み中…" />
       ) : (
-        <ScrollView contentContainerStyle={styles.scrollBody}>
-          <FlatList
-            data={cells}
-            numColumns={DAYS_IN_WEEK}
-            scrollEnabled={false}
-            keyExtractor={(cell) => cell.date}
-            style={styles.grid}
-            renderItem={({ item }) => (
-              <DayCell
-                cell={item}
-                width={cellWidth}
-                compact={compact}
-                selected={item.date === selectedDate}
-                onPress={handleSelectDate}
-                events={item.isCurrentMonth ? (eventsByDate[item.date] ?? []) : []}
-                members={members}
-                availabilities={availabilities}
-              />
-            )}
-          />
-
-          <View style={styles.selectedSection}>
-            {selectedDate === null ? (
-              <Text style={styles.hint}>日付をタップすると、その日の予定が出ます</Text>
-            ) : (
-              <>
-                <Text style={styles.selectedHeading}>{formatDateHeading(selectedDate)}</Text>
-                {selectedEvents.length === 0 ? (
-                  <Text style={styles.hint}>予定はありません</Text>
-                ) : (
-                  selectedEvents.map((e) => (
-                    <EventCard
-                      key={e.id}
-                      event={e}
-                      memberAnswers={
-                        e.stream_id
-                          ? resolveMemberAnswers(members, availabilities, e.stream_id)
-                          : undefined
-                      }
-                      onPress={
-                        e.stream_id
-                          ? () =>
-                              router.push({
-                                pathname: '/stream/[id]',
-                                params: { id: e.stream_id! },
-                              })
-                          : undefined
-                      }
-                    />
-                  ))
-                )}
-              </>
-            )}
+        <Body compact={compact}>
+          {/* 広い画面ではここが残りの高さを取り、その高さからセルの高さを決める */}
+          <View style={compact ? undefined : styles.gridArea} onLayout={onGridAreaLayout}>
+            <FlatList
+              data={cells}
+              numColumns={DAYS_IN_WEEK}
+              scrollEnabled={false}
+              keyExtractor={(cell) => cell.date}
+              style={styles.grid}
+              renderItem={({ item }) => (
+                <DayCell
+                  cell={item}
+                  width={cellWidth}
+                  height={cellHeight}
+                  compact={compact}
+                  selected={item.date === selectedDate}
+                  onPress={handleSelectDate}
+                  events={item.isCurrentMonth ? (eventsByDate[item.date] ?? []) : []}
+                  members={members}
+                  availabilities={availabilities}
+                />
+              )}
+            />
           </View>
 
-          <ScheduleSummary
-            todayLabel={formatDateHeading(todayKey)}
-            todayEvents={todayEvents}
+          <View style={compact ? undefined : styles.panelRow}>
+            <ScheduleSummary
+            selectedLabel={
+              selectedDate === null
+                ? '日付をタップすると予定が出ます'
+                : `${formatDateHeading(selectedDate)}の予定`
+            }
+            selectedEvents={selectedEvents}
             weekPublishEvents={weekPublishEvents}
             myTasks={myTasks}
             todayKey={todayKey}
@@ -379,13 +356,28 @@ export default function CalendarScreen() {
                 setCursor(yearMonthOf(e.date));
                 setSelectedDate(e.date);
               }
-            }}
-          />
-        </ScrollView>
+              }}
+            />
+          </View>
+        </Body>
       )}
 
     </SafeAreaView>
   );
+}
+
+/**
+ * 本文の入れ物。
+ *
+ *   - 狭い画面: `ScrollView`。6行のグリッドと4枚のパネルは物理的に1画面へ入らない
+ *   - 広い画面: ただの `View`。**スクロールさせず1画面に収める**
+ *              （グリッド領域が残りの高さを取り、パネル行は固定高さ）
+ */
+function Body({ compact, children }: { compact: boolean; children: React.ReactNode }) {
+  if (compact) {
+    return <ScrollView contentContainerStyle={styles.scrollBody}>{children}</ScrollView>;
+  }
+  return <View style={styles.fitBody}>{children}</View>;
 }
 
 /** '2026-08-21' → '8月21日(金)' */
@@ -411,6 +403,7 @@ function NavButton({ label, onPress }: { label: string; onPress: () => void }) {
 function DayCell({
   cell,
   width,
+  height,
   compact,
   selected,
   onPress,
@@ -420,6 +413,7 @@ function DayCell({
 }: {
   cell: CalendarCell;
   width: number;
+  height: number;
   compact: boolean;
   selected: boolean;
   onPress: (cell: CalendarCell) => void;
@@ -434,7 +428,7 @@ function DayCell({
       onPress={() => onPress(cell)}
       style={[
         styles.cell,
-        { width, height: compact ? LAYOUT.calendarCellHeight : LAYOUT.calendarCellHeightWide },
+        { width, height },
         selected && styles.cellSelected,
       ]}
     >
@@ -556,6 +550,12 @@ const styles = StyleSheet.create({
   weekdayTextWeekend: { color: COLORS.textWeekend },
 
   scrollBody: { paddingBottom: SPACING.xl },
+  /** 広い画面用。縦に伸ばして、中の gridArea が残りを取れるようにする */
+  fitBody: { flex: 1 },
+  /** カレンダーのグリッドが占める領域。ここの高さからセルの高さを決める */
+  gridArea: { flex: 1, minHeight: 0 },
+  /** 広い画面で下部に敷くパネル行。溢れる中身は各パネルの中でスクロールする */
+  panelRow: { height: LAYOUT.panelRowHeight },
   grid: { paddingHorizontal: SPACING.sm },
   selectedSection: { paddingHorizontal: SPACING.sm, paddingTop: SPACING.md },
   selectedHeading: { fontSize: FONT_SIZE.title, marginBottom: SPACING.sm },

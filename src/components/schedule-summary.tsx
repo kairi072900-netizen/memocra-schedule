@@ -1,4 +1,4 @@
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { Text } from '@/components/app-text';
 import { MemberAvatar, PixelIcon } from '@/components/pixel/icon';
@@ -21,16 +21,18 @@ import type { MemberWorkload } from '@/lib/workload';
 import type { Task } from '@/types';
 
 /**
- * カレンダーの下に置く要約パネル（モックアップ下段の「今日の予定」「今週の公開予定」）。
+ * カレンダーの下に置く要約パネル（モックアップ下段）。
  * **表示専用。データの取得元は知らない**（CLAUDE.md §4）。
  *
- * モックアップにはもう1枚「負荷サマリー」があるが、タスクが必要なので P5/P6 で足す。
+ * 1枚目は**選択日の予定**。以前はカレンダー直下に別セクションを置いていたが、
+ * 初期選択が今日なので「今日の予定」パネルと同じ内容が2回出ていた。
+ * 1枚目に統合して重複を消し、そのぶん縦を詰めている。
  *
  * 幅が広いときは横並び、狭いときは縦積みになる（`flexWrap`）。
  */
 export function ScheduleSummary({
-  todayLabel,
-  todayEvents,
+  selectedLabel,
+  selectedEvents,
   weekPublishEvents,
   myTasks,
   todayKey,
@@ -41,9 +43,9 @@ export function ScheduleSummary({
   onPressTask,
   onPressWorkload,
 }: {
-  /** '8月10日(月)' のような見出し。 */
-  todayLabel: string;
-  todayEvents: ScheduleEvent[];
+  /** '8月10日(月)' のような見出し。選択日（未選択なら今日）。 */
+  selectedLabel: string;
+  selectedEvents: ScheduleEvent[];
   /** 今週の公開予定（ロング/ショート）。 */
   weekPublishEvents: ScheduleEvent[];
   /** 自分が担当する未完了タスク（締切の近い順）。 */
@@ -63,11 +65,11 @@ export function ScheduleSummary({
 }) {
   return (
     <View style={styles.container}>
-      <Panel title={`今日の予定 ${todayLabel}`}>
-        {todayEvents.length === 0 ? (
+      <Panel title={selectedLabel}>
+        {selectedEvents.length === 0 ? (
           <Text style={styles.empty}>予定はありません</Text>
         ) : (
-          todayEvents.map((e) => (
+          selectedEvents.map((e) => (
             <SummaryRow key={e.id} event={e} answersOf={answersOf} onPress={onPressEvent} />
           ))
         )}
@@ -114,13 +116,18 @@ function Panel({
     <PixelFrame style={styles.panel}>
       {onPressTitle ? (
         <Pressable style={styles.panelTitleRow} onPress={onPressTitle}>
-          <Text style={styles.panelTitle}>{title}</Text>
+          <Text style={styles.panelTitle} numberOfLines={1}>
+            {title}
+          </Text>
           <Text style={styles.panelMore}>すべて見る ›</Text>
         </Pressable>
       ) : (
-        <Text style={styles.panelTitle}>{title}</Text>
+        <Text style={styles.panelTitle} numberOfLines={1}>
+          {title}
+        </Text>
       )}
-      {children}
+      {/* 広い画面ではパネルの高さが固定なので、中身が多いときはここでスクロールする */}
+      <ScrollView style={styles.panelBody}>{children}</ScrollView>
     </PixelFrame>
   );
 }
@@ -218,9 +225,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: SPACING.sm,
     paddingTop: SPACING.md,
   },
-  // 320px 幅でも1枚が収まり、広い画面では2枚が横に並ぶ最小幅
-  panel: { flexGrow: 1, flexBasis: 280, padding: SPACING.sm },
-  panelTitle: { fontSize: FONT_SIZE.body, marginBottom: SPACING.sm },
+  /**
+   * 320px 幅でも1枚が収まり、**PC（サイドバーを引いた約1000px）では4枚が横1列**に並ぶ幅。
+   * 4枚 × 220 + 余白 ≒ 940 なので、1000px あれば折り返さない。
+   */
+  panel: { flexGrow: 1, flexBasis: 220, padding: SPACING.sm, minHeight: 0 },
+  panelTitle: { fontSize: FONT_SIZE.body, marginBottom: SPACING.sm, flexShrink: 1 },
+  panelBody: { flexGrow: 0, flexShrink: 1 },
   panelTitleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   panelMore: { fontSize: FONT_SIZE.body, color: COLORS.textMuted, marginBottom: SPACING.sm },
   empty: { fontSize: FONT_SIZE.body, color: COLORS.textMuted },
