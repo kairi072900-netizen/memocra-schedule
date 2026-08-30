@@ -212,6 +212,8 @@ const styles = StyleSheet.create({
     marginBottom: SPACING.sm,
   },
   chip: {
+    minHeight: LAYOUT.minTapSize,
+    justifyContent: 'center',
     flexDirection: 'row',
     alignItems: 'center',
     gap: SPACING.xs,

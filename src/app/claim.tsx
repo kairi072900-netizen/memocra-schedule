@@ -5,7 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Text } from '@/components/app-text';
 import { ErrorView } from '@/components/async-state';
 import { PixelFrame } from '@/components/pixel/frame';
-import { BORDER_WIDTH, COLORS, FONT_FAMILY, FONT_SIZE, SPACING } from '@/constants/theme';
+import { BORDER_WIDTH, COLORS, FONT_FAMILY, FONT_SIZE, LAYOUT, SPACING } from '@/constants/theme';
 import { useSession } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
 
@@ -116,6 +116,9 @@ const styles = StyleSheet.create({
     marginBottom: SPACING.lg,
   },
   button: {
+    minHeight: LAYOUT.minTapSize,
+    alignItems: 'center',
+    justifyContent: 'center',
     borderWidth: BORDER_WIDTH.normal,
     borderColor: COLORS.frameDark,
     backgroundColor: COLORS.surfaceSunken,

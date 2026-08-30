@@ -507,6 +507,9 @@ const styles = StyleSheet.create({
   },
   monthLabel: { fontSize: FONT_SIZE.title, textAlign: 'center', marginBottom: SPACING.xs },
   navButton: {
+    minHeight: LAYOUT.minTapSize,
+    alignItems: 'center',
+    justifyContent: 'center',
     borderWidth: BORDER_WIDTH.normal,
     borderColor: COLORS.frameDark,
     backgroundColor: COLORS.surfaceSunken,
@@ -517,6 +520,9 @@ const styles = StyleSheet.create({
   navLabelMuted: { fontSize: FONT_SIZE.body, color: COLORS.textMuted },
   viewToggle: { flexDirection: 'row', justifyContent: 'center', marginBottom: SPACING.xs },
   toggleButton: {
+    minHeight: LAYOUT.minTapSize,
+    alignItems: 'center',
+    justifyContent: 'center',
     borderWidth: BORDER_WIDTH.normal,
     borderColor: COLORS.frameDark,
     backgroundColor: COLORS.surface,
@@ -526,6 +532,9 @@ const styles = StyleSheet.create({
   toggleButtonActive: { backgroundColor: COLORS.surfaceSunken },
   note: { fontSize: FONT_SIZE.body, color: COLORS.textMuted, textAlign: 'center' },
   bellButton: {
+    minHeight: LAYOUT.minTapSize,
+    alignItems: 'center',
+    justifyContent: 'center',
     borderWidth: BORDER_WIDTH.normal,
     borderColor: COLORS.frameDark,
     backgroundColor: COLORS.surface,
@@ -545,8 +554,10 @@ const styles = StyleSheet.create({
   },
   bellBadgeText: { fontSize: FONT_SIZE.body, color: COLORS.textOnDark },
   primaryButton: {
+    minHeight: LAYOUT.minTapSize,
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: SPACING.xs,
     borderWidth: BORDER_WIDTH.normal,
     borderColor: COLORS.frameDark,

@@ -5,7 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Text } from '@/components/app-text';
 import { PixelFrame } from '@/components/pixel/frame';
-import { BORDER_WIDTH, COLORS, FONT_SIZE, LONG_TEXT, SPACING } from '@/constants/theme';
+import { BORDER_WIDTH, COLORS, FONT_SIZE, LAYOUT, LONG_TEXT, SPACING } from '@/constants/theme';
 import { useSession } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
 
@@ -89,10 +89,13 @@ const styles = StyleSheet.create({
   value: { fontSize: FONT_SIZE.body },
   hint: { fontSize: FONT_SIZE.body, color: COLORS.textMuted, marginTop: SPACING.xs },
   about: { ...LONG_TEXT, color: COLORS.text },
-  linkRow: { marginTop: SPACING.md },
+  linkRow: { marginTop: SPACING.md, minHeight: LAYOUT.minTapSize, justifyContent: 'center' },
   link: { fontSize: FONT_SIZE.body, color: COLORS.text },
   actions: { flexDirection: 'row', marginTop: SPACING.lg },
   signOutButton: {
+    minHeight: LAYOUT.minTapSize,
+    alignItems: 'center',
+    justifyContent: 'center',
     borderWidth: BORDER_WIDTH.normal,
     borderColor: COLORS.frameDark,
     backgroundColor: COLORS.surface,

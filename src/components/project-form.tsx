@@ -256,6 +256,8 @@ const styles = StyleSheet.create({
 
   kindRow: { flexDirection: 'row', gap: SPACING.sm, flexWrap: 'wrap' },
   kindButton: {
+    minHeight: LAYOUT.minTapSize,
+    justifyContent: 'center',
     flexDirection: 'row',
     alignItems: 'center',
     gap: SPACING.xs,

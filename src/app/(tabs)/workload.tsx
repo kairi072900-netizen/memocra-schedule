@@ -188,7 +188,14 @@ const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: COLORS.background },
   body: { paddingBottom: SPACING.xxl },
   header: { margin: SPACING.sm, padding: SPACING.sm },
-  back: { fontSize: FONT_SIZE.body, color: COLORS.textMuted },
+  // 「もどる」は Text の onPress。文字の高さ（17px）しか当たり判定が無いので、
+  // 上下に余白を足して 44px 相当まで広げる（§3.1 minTapSize）
+  back: {
+    fontSize: FONT_SIZE.body,
+    color: COLORS.textMuted,
+    paddingVertical: SPACING.md,
+    alignSelf: 'flex-start',
+  },
   title: { fontSize: FONT_SIZE.title, textAlign: 'center' },
   content: { paddingHorizontal: SPACING.sm, gap: SPACING.sm },
   panel: { padding: SPACING.sm },

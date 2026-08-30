@@ -8,7 +8,7 @@ import { ErrorView, LoadingView } from '@/components/async-state';
 import { PixelFrame } from '@/components/pixel/frame';
 import { ProjectForm } from '@/components/project-form';
 import { StreamForm } from '@/components/stream-form';
-import { BORDER_WIDTH, COLORS, FONT_SIZE, SPACING } from '@/constants/theme';
+import { BORDER_WIDTH, COLORS, FONT_SIZE, LAYOUT, SPACING } from '@/constants/theme';
 import { createProject, createStream, createTasks, getMembers } from '@/lib/api';
 import { dateToKey } from '@/lib/calendar';
 import { isValidDateKey, toIsoAt } from '@/lib/date-input';
@@ -172,6 +172,9 @@ const styles = StyleSheet.create({
   title: { fontSize: FONT_SIZE.title, marginBottom: SPACING.sm },
   modeRow: { flexDirection: 'row', gap: SPACING.sm, flexWrap: 'wrap', justifyContent: 'center' },
   modeButton: {
+    minHeight: LAYOUT.minTapSize,
+    alignItems: 'center',
+    justifyContent: 'center',
     borderWidth: BORDER_WIDTH.normal,
     borderColor: COLORS.frameDark,
     backgroundColor: COLORS.surface,

@@ -188,6 +188,9 @@ const styles = StyleSheet.create({
 
   choiceRow: { flexDirection: 'row', gap: SPACING.xs, marginTop: SPACING.sm, flexWrap: 'wrap' },
   choice: {
+    minHeight: LAYOUT.minTapSize,
+    alignItems: 'center',
+    justifyContent: 'center',
     borderWidth: BORDER_WIDTH.normal,
     borderColor: COLORS.frameDark,
     backgroundColor: COLORS.background,

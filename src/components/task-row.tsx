@@ -203,8 +203,11 @@ const styles = StyleSheet.create({
   detailLabel: { fontSize: FONT_SIZE.body, color: COLORS.textMuted, marginTop: SPACING.xs },
   chipRow: { flexDirection: 'row', gap: SPACING.xs, flexWrap: 'wrap' },
   chip: {
+    // 担当・ステータスの切替は一番よく押す。指で確実に当たる大きさを確保する（§3.1）
+    minHeight: LAYOUT.minTapSize,
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: SPACING.xs,
     borderWidth: BORDER_WIDTH.normal,
     borderColor: COLORS.frameDark,

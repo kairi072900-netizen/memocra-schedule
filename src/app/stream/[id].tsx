@@ -289,7 +289,14 @@ const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: COLORS.background },
   body: { paddingBottom: SPACING.xxl },
   header: { margin: SPACING.sm, padding: SPACING.sm },
-  back: { fontSize: FONT_SIZE.body, color: COLORS.textMuted },
+  // 「もどる」は Text の onPress。文字の高さ（17px）しか当たり判定が無いので、
+  // 上下に余白を足して 44px 相当まで広げる（§3.1 minTapSize）
+  back: {
+    fontSize: FONT_SIZE.body,
+    color: COLORS.textMuted,
+    paddingVertical: SPACING.md,
+    alignSelf: 'flex-start',
+  },
   content: { paddingHorizontal: SPACING.md },
   title: { fontSize: FONT_SIZE.title, marginBottom: SPACING.xs },
   meta: { fontSize: FONT_SIZE.body, color: COLORS.textMuted },
@@ -318,6 +325,9 @@ const styles = StyleSheet.create({
 
   choiceRow: { flexDirection: 'row', gap: SPACING.sm, flexWrap: 'wrap' },
   choiceButton: {
+    minHeight: LAYOUT.minTapSize,
+    alignItems: 'center',
+    justifyContent: 'center',
     borderWidth: BORDER_WIDTH.normal,
     borderColor: COLORS.frameDark,
     backgroundColor: COLORS.surface,
@@ -341,6 +351,9 @@ const styles = StyleSheet.create({
 
   actions: { flexDirection: 'row', gap: SPACING.md, marginTop: SPACING.xxl },
   editButton: {
+    minHeight: LAYOUT.minTapSize,
+    alignItems: 'center',
+    justifyContent: 'center',
     borderWidth: BORDER_WIDTH.normal,
     borderColor: COLORS.frameDark,
     backgroundColor: COLORS.surfaceSunken,
@@ -348,6 +361,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: SPACING.xl,
   },
   deleteButton: {
+    minHeight: LAYOUT.minTapSize,
+    alignItems: 'center',
+    justifyContent: 'center',
     borderWidth: BORDER_WIDTH.normal,
     borderColor: COLORS.frameDark,
     backgroundColor: COLORS.surface,

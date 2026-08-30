@@ -268,6 +268,9 @@ const styles = StyleSheet.create({
 
   chipRow: { flexDirection: 'row', gap: SPACING.xs, flexWrap: 'wrap', marginTop: SPACING.xs },
   chip: {
+    minHeight: LAYOUT.minTapSize,
+    alignItems: 'center',
+    justifyContent: 'center',
     borderWidth: BORDER_WIDTH.normal,
     borderColor: COLORS.frameDark,
     backgroundColor: COLORS.surface,
@@ -277,6 +280,7 @@ const styles = StyleSheet.create({
   chipActive: { backgroundColor: COLORS.surfaceSunken, borderColor: COLORS.text },
   chipText: { fontSize: FONT_SIZE.body },
   colorChip: {
+    minHeight: LAYOUT.minTapSize,
     width: LAYOUT.badgeSize,
     height: LAYOUT.badgeSize,
     borderWidth: BORDER_WIDTH.normal,
@@ -290,6 +294,9 @@ const styles = StyleSheet.create({
   error: { fontSize: FONT_SIZE.body, color: COLORS.danger, marginTop: SPACING.sm },
   actions: { flexDirection: 'row', alignItems: 'center', gap: SPACING.md, marginTop: SPACING.lg },
   saveButton: {
+    minHeight: LAYOUT.minTapSize,
+    alignItems: 'center',
+    justifyContent: 'center',
     borderWidth: BORDER_WIDTH.normal,
     borderColor: COLORS.frameDark,
     backgroundColor: COLORS.surfaceSunken,

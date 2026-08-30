@@ -9,6 +9,7 @@ import {
   COLORS,
   FONT_FAMILY,
   FONT_SIZE,
+  LAYOUT,
   LONG_TEXT,
   SPACING,
   STREAM_PLATFORM,
@@ -211,6 +212,9 @@ const styles = StyleSheet.create({
   memoInput: { ...LONG_TEXT, minHeight: SPACING.xxl * 2, textAlignVertical: 'top' },
   platformRow: { flexDirection: 'row', gap: SPACING.sm },
   platformButton: {
+    minHeight: LAYOUT.minTapSize,
+    alignItems: 'center',
+    justifyContent: 'center',
     borderWidth: BORDER_WIDTH.normal,
     borderColor: COLORS.frameDark,
     backgroundColor: COLORS.surface,
