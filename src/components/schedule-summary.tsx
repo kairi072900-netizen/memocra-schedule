@@ -42,6 +42,7 @@ export function ScheduleSummary({
   onPressEvent,
   onPressTask,
   onPressWorkload,
+  onPressAdd,
 }: {
   /** '8月10日(月)' のような見出し。選択日（未選択なら今日）。 */
   selectedLabel: string;
@@ -62,10 +63,15 @@ export function ScheduleSummary({
   onPressTask: (task: Task) => void;
   /** 負荷サマリーの見出しをタップしたとき（S5 の専用画面へ）。 */
   onPressWorkload: () => void;
+  /**
+   * 選択日に予定を足したいとき。**日付が選ばれているときだけ**渡す
+   * （未選択のまま「この日に追加」を出すと、どの日に入るのか分からないため）。
+   */
+  onPressAdd?: () => void;
 }) {
   return (
     <View style={styles.container}>
-      <Panel title={selectedLabel}>
+      <Panel title={selectedLabel} onPressTitle={onPressAdd} actionLabel="＋ 追加">
         {selectedEvents.length === 0 ? (
           <Text style={styles.empty}>予定はありません</Text>
         ) : (
@@ -106,11 +112,14 @@ function Panel({
   title,
   children,
   onPressTitle,
+  actionLabel = 'すべて見る ›',
 }: {
   title: string;
   children: React.ReactNode;
-  /** 渡すと見出しが「すべて見る ›」付きのタップ領域になる。 */
+  /** 渡すと見出しが右端のラベル付きタップ領域になる。 */
   onPressTitle?: () => void;
+  /** 見出し右端の文言。遷移だけでなく「＋ この日に追加」のような操作にも使う。 */
+  actionLabel?: string;
 }) {
   return (
     <PixelFrame style={styles.panel}>
@@ -119,7 +128,9 @@ function Panel({
           <Text style={styles.panelTitle} numberOfLines={1}>
             {title}
           </Text>
-          <Text style={styles.panelMore}>すべて見る ›</Text>
+          <Text style={styles.panelMore} numberOfLines={1}>
+            {actionLabel}
+          </Text>
         </Pressable>
       ) : (
         <Text style={styles.panelTitle} numberOfLines={1}>
@@ -233,7 +244,15 @@ const styles = StyleSheet.create({
   panelTitle: { fontSize: FONT_SIZE.body, marginBottom: SPACING.sm, flexShrink: 1 },
   panelBody: { flexGrow: 0, flexShrink: 1 },
   panelTitleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  panelMore: { fontSize: FONT_SIZE.body, color: COLORS.textMuted, marginBottom: SPACING.sm },
+  // 右端のラベルは縮めない（縮むのは見出しのほう）。
+  // 折り返すと見出しが1行ぶん押し下げられ、パネルの中身が隠れる
+  panelMore: {
+    fontSize: FONT_SIZE.body,
+    color: COLORS.textMuted,
+    marginBottom: SPACING.sm,
+    flexShrink: 0,
+    marginLeft: SPACING.sm,
+  },
   empty: { fontSize: FONT_SIZE.body, color: COLORS.textMuted },
   row: {
     borderTopWidth: BORDER_WIDTH.hairline,

@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, TextInput, View } from 'react-native';
 
 import { Text } from '@/components/app-text';
 import { ErrorView } from '@/components/async-state';
+import { DateField, TimeField } from '@/components/pixel/date-picker';
 import {
   BORDER_WIDTH,
   COLORS,
@@ -13,6 +14,7 @@ import {
   STREAM_PLATFORM,
 } from '@/constants/theme';
 import type { StreamInput } from '@/lib/api';
+import { isValidDateKey, isValidTime, toIsoAt } from '@/lib/date-input';
 import type { Member, StreamPlatform } from '@/types';
 
 /**
@@ -27,9 +29,6 @@ import type { Member, StreamPlatform } from '@/types';
 
 const PLATFORMS: StreamPlatform[] = ['youtube', 'twitch', 'other'];
 
-const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
-const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
-
 export interface StreamFormInitial {
   title: string;
   /** ISO 8601（JST）。編集時に渡す。 */
@@ -37,12 +36,6 @@ export interface StreamFormInitial {
   duration_min: number;
   platform: StreamPlatform;
   memo: string | null;
-}
-
-function isRealDate(s: string): boolean {
-  const [y, m, d] = s.split('-').map(Number);
-  const dt = new Date(y, m - 1, d);
-  return dt.getFullYear() === y && dt.getMonth() === m - 1 && dt.getDate() === d;
 }
 
 export function StreamForm({
@@ -71,8 +64,8 @@ export function StreamForm({
 
   const validate = (): string | null => {
     if (title.trim().length === 0) return 'タイトルを入れてください';
-    if (!DATE_RE.test(date) || !isRealDate(date)) return '日付は 2026-08-15 の形式で入れてください';
-    if (!TIME_RE.test(time)) return '開始時刻は 20:00 の形式で入れてください';
+    if (!isValidDateKey(date)) return '日付は 2026-08-15 の形式で入れてください';
+    if (!isValidTime(time)) return '開始時刻は 20:00 の形式で入れてください';
     const dur = Number(duration);
     if (!Number.isInteger(dur) || dur <= 0) return '所要時間は分の数字で入れてください';
     return null;
@@ -89,7 +82,7 @@ export function StreamForm({
     try {
       await onSubmit({
         title: title.trim(),
-        starts_at: `${date}T${time}:00+09:00`,
+        starts_at: toIsoAt(date, time),
         duration_min: Number(duration),
         platform,
         memo: memo.trim().length > 0 ? memo.trim() : null,
@@ -112,30 +105,9 @@ export function StreamForm({
         />
       </Field>
 
-      <View style={styles.row}>
-        <Field label="日付" style={styles.rowItem}>
-          <TextInput
-            value={date}
-            onChangeText={setDate}
-            placeholder="2026-08-15"
-            placeholderTextColor={COLORS.textMuted}
-            autoCapitalize="none"
-            autoCorrect={false}
-            style={styles.input}
-          />
-        </Field>
-        <Field label="開始時刻" style={styles.rowItem}>
-          <TextInput
-            value={time}
-            onChangeText={setTime}
-            placeholder="20:00"
-            placeholderTextColor={COLORS.textMuted}
-            autoCapitalize="none"
-            autoCorrect={false}
-            style={styles.input}
-          />
-        </Field>
-      </View>
+      {/* 手打ちとピッカーの両方で入れられる（date-picker.tsx の冒頭コメント参照） */}
+      <DateField label="日付" value={date} onChange={setDate} placeholder="2026-08-15" />
+      <TimeField label="開始時刻" value={time} onChange={setTime} placeholder="20:00" />
 
       <Field label="所要時間（分）">
         <TextInput
@@ -226,8 +198,6 @@ const styles = StyleSheet.create({
   container: { padding: SPACING.md },
   field: { marginBottom: SPACING.lg },
   label: { fontSize: FONT_SIZE.body, marginBottom: SPACING.xs },
-  row: { flexDirection: 'row', gap: SPACING.md },
-  rowItem: { flex: 1 },
   input: {
     borderWidth: BORDER_WIDTH.normal,
     borderColor: COLORS.frameDark,

@@ -1,4 +1,4 @@
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -11,6 +11,7 @@ import { StreamForm } from '@/components/stream-form';
 import { BORDER_WIDTH, COLORS, FONT_SIZE, SPACING } from '@/constants/theme';
 import { createProject, createStream, createTasks, getMembers } from '@/lib/api';
 import { dateToKey } from '@/lib/calendar';
+import { isValidDateKey, toIsoAt } from '@/lib/date-input';
 import { buildTasksFromTemplate, pastDueTasks } from '@/lib/task-template';
 import type { Member } from '@/types';
 
@@ -21,11 +22,24 @@ import type { Member } from '@/types';
  * 開いた瞬間にそれが選ばれている状態にする（要件定義書 第5章）。
  *
  * 登録すると本来は全員に通知が飛ぶ（要件定義書 F5/F7）が、通知は P4。
+ *
+ * 【クエリパラメータ】カレンダーの日付から直接ここへ来られる（`?date=2026-09-05&mode=stream`）。
+ * 「＋タブへ行く → 種別を選ぶ → 日付を打つ」の3手を1手に縮めるため。
+ * 受け取った日付は**フォームの初期値を作るだけ**で、登録は従来どおり人がボタンを押す。
  */
 type Mode = 'project' | 'stream';
 
+/** 既定の時刻。企画の公開は 19:00（ProjectForm の既定と揃える）、配信は 20:00。 */
+const DEFAULT_PUBLISH_TIME = '19:00';
+const DEFAULT_STREAM_TIME = '20:00';
+
 export default function NewScreen() {
-  const [mode, setMode] = useState<Mode>('project');
+  // params は string | string[] で来ることがあるので、素の string のときだけ採用する
+  const params = useLocalSearchParams<{ date?: string; mode?: string }>();
+  const presetDate =
+    typeof params.date === 'string' && isValidDateKey(params.date) ? params.date : null;
+
+  const [mode, setMode] = useState<Mode>(params.mode === 'stream' ? 'stream' : 'project');
   const [members, setMembers] = useState<Member[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   /** 締切が過去日になった工程の警告（要件定義書 F2）。登録は止めない。 */
@@ -70,6 +84,17 @@ export default function NewScreen() {
           <LoadingView label="読み込み中…" />
         ) : mode === 'project' ? (
           <ProjectForm
+            initial={
+              presetDate
+                ? {
+                    title: '',
+                    kind: 'long',
+                    publish_at: toIsoAt(presetDate, DEFAULT_PUBLISH_TIME),
+                    shoot_at: null,
+                    memo: null,
+                  }
+                : undefined
+            }
             submitLabel="企画を登録する"
             offerTemplate
             onSubmit={async (input, applyTemplate) => {
@@ -99,6 +124,17 @@ export default function NewScreen() {
           />
         ) : (
           <StreamForm
+            initial={
+              presetDate
+                ? {
+                    title: '',
+                    starts_at: toIsoAt(presetDate, DEFAULT_STREAM_TIME),
+                    duration_min: 60,
+                    platform: 'youtube',
+                    memo: null,
+                  }
+                : undefined
+            }
             members={members}
             submitLabel="配信を登録する"
             onSubmit={async (input) => {

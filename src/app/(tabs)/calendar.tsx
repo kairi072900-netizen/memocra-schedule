@@ -80,6 +80,21 @@ export default function CalendarScreen() {
     setSelectedDate(cell.date);
   };
 
+  /**
+   * その日付を初期値にして登録画面を開く。
+   * 「＋タブへ行く → 種別を選ぶ → 日付を打つ」の3手を1手にする（要望「日付をタップして
+   * 予定を入れられる」）。**開くだけで登録はしない**ので、押し間違えても何も起きない。
+   */
+  const openNewFor = (dateKey: string) => {
+    router.push({ pathname: '/new', params: { date: dateKey } });
+  };
+
+  /** セルの長押し。選択を合わせてから登録画面へ（戻ったときにその日が選ばれている）。 */
+  const handleAddOnDate = (cell: CalendarCell) => {
+    handleSelectDate(cell);
+    openNewFor(cell.date);
+  };
+
   // 4種類すべて Supabase（lib/api.ts）に切り替え済み（CLAUDE.md §5.2）
   const [members, setMembers] = useState<Member[] | null>(null);
   const [membersError, setMembersError] = useState<string | null>(null);
@@ -322,6 +337,7 @@ export default function CalendarScreen() {
                   compact={compact}
                   selected={item.date === selectedDate}
                   onPress={handleSelectDate}
+                  onLongPress={handleAddOnDate}
                   events={item.isCurrentMonth ? (eventsByDate[item.date] ?? []) : []}
                   members={members}
                   availabilities={availabilities}
@@ -344,6 +360,7 @@ export default function CalendarScreen() {
             workloads={workloads}
             unassignedCount={unassignedTasks(tasks ?? []).length}
             onPressWorkload={() => router.push('/workload')}
+            onPressAdd={selectedDate === null ? undefined : () => openNewFor(selectedDate)}
             answersOf={(streamId) => resolveMemberAnswers(members, availabilities, streamId)}
             onPressTask={(t) =>
               router.push({ pathname: '/project/[id]', params: { id: t.project_id } })
@@ -407,6 +424,7 @@ function DayCell({
   compact,
   selected,
   onPress,
+  onLongPress,
   events,
   members,
   availabilities,
@@ -417,6 +435,7 @@ function DayCell({
   compact: boolean;
   selected: boolean;
   onPress: (cell: CalendarCell) => void;
+  onLongPress: (cell: CalendarCell) => void;
   events: ScheduleEvent[];
   members: Member[];
   availabilities: Availability[];
@@ -426,6 +445,7 @@ function DayCell({
   return (
     <Pressable
       onPress={() => onPress(cell)}
+      onLongPress={() => onLongPress(cell)}
       style={[
         styles.cell,
         { width, height },

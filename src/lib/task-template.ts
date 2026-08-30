@@ -37,6 +37,7 @@ export interface TaskTemplateStep {
 
 export interface TaskTemplate {
   id: string;
+  /** 表示名。**工程数は入れない**（画面側が `steps.length` を足すので二重になる）。 */
   name: string;
   steps: TaskTemplateStep[];
 }
@@ -46,16 +47,31 @@ export interface TaskTemplate {
  * （未定義があると、その種別を選んだときにタスクが1件も作られず無言で失敗する）。
  */
 export const TASK_TEMPLATES: Record<ProjectKind, TaskTemplate> = {
-  // 要件定義書 第5章「工程テンプレート例（ロング動画）」の11工程
+  // 要件定義書 第5章「工程テンプレート例（ロング動画）」の11工程。
+  //
+  // 【ロング編集を5工程に割った】2026-08-30。要件定義書は「ロング編集」1工程（-3日）だが、
+  // 1人が丸ごと抱える形になっていた。カット / テロップ / SE / BGM / エフェクトに分けると
+  // **工程単位で別の人に振れる**ようになり、§1の成功指標「リーダーの担当タスク比率60%以下」
+  // を動かせる。担当と締切を個別に持たせたいので、チェック項目ではなく独立した工程にしている。
+  //
+  // `kind` は5つとも `edit_long` のまま。工程名はテンプレートのデータとして持ち、
+  // kind 側は汎用に保つ（§3.2）。これで `tasks.kind` の CHECK 制約にも触らずに済む。
   long: {
     id: 'long-v1',
-    name: 'ロング動画（11工程）',
+    name: 'ロング動画',
     steps: [
       { kind: 'planning', title: '企画確定', offsetDays: -14, defaultRole: '企画' },
       { kind: 'build', title: '建築・コマンド準備', offsetDays: -10, defaultRole: '建築' },
       { kind: 'shoot', title: '撮影', offsetDays: -7, defaultRole: null },
       { kind: 'shoot', title: '素材整理・共有', offsetDays: -6, defaultRole: null },
-      { kind: 'edit_long', title: 'ロング編集', offsetDays: -3, defaultRole: '企画' },
+      // 編集の5工程。初期担当は今の実態どおり全部「企画」ロールに寄せてある。
+      // **偏りをそのまま負荷グラフに出す**ためで、振り直しは画面から行う
+      // （初期値で分散させると、実際には1人でやっているのに偏りが見えなくなる）。
+      { kind: 'edit_long', title: 'ロング編集：カット', offsetDays: -6, defaultRole: '企画' },
+      { kind: 'edit_long', title: 'ロング編集：テロップ', offsetDays: -5, defaultRole: '企画' },
+      { kind: 'edit_long', title: 'ロング編集：SE', offsetDays: -4, defaultRole: '企画' },
+      { kind: 'edit_long', title: 'ロング編集：BGM', offsetDays: -4, defaultRole: '企画' },
+      { kind: 'edit_long', title: 'ロング編集：エフェクト', offsetDays: -3, defaultRole: '企画' },
       { kind: 'thumbnail', title: 'サムネ作成', offsetDays: -3, defaultRole: 'サムネ' },
       { kind: 'upload', title: 'タイトル・概要欄', offsetDays: -2, defaultRole: '企画' },
       { kind: 'upload', title: '投稿予約', offsetDays: -1, defaultRole: '企画' },
@@ -67,7 +83,7 @@ export const TASK_TEMPLATES: Record<ProjectKind, TaskTemplate> = {
   // 同章「工程テンプレート例（ショート単体）」の4工程
   short: {
     id: 'short-v1',
-    name: 'ショート単体（4工程）',
+    name: 'ショート単体',
     steps: [
       { kind: 'planning', title: '企画', offsetDays: -5, defaultRole: '企画' },
       { kind: 'shoot', title: '撮影・素材選定', offsetDays: -3, defaultRole: null },
@@ -78,7 +94,7 @@ export const TASK_TEMPLATES: Record<ProjectKind, TaskTemplate> = {
   // 要件定義書に例が無いので最小構成。空にすると無言で0件生成になるため必ず持たせる
   sns: {
     id: 'sns-v1',
-    name: 'SNS投稿（2工程）',
+    name: 'SNS投稿',
     steps: [
       { kind: 'planning', title: '内容を決める', offsetDays: -1, defaultRole: '企画' },
       { kind: 'sns', title: '投稿', offsetDays: 0, defaultRole: '企画' },
@@ -86,7 +102,7 @@ export const TASK_TEMPLATES: Record<ProjectKind, TaskTemplate> = {
   },
   other: {
     id: 'other-v1',
-    name: 'その他（2工程）',
+    name: 'その他',
     steps: [
       { kind: 'planning', title: '企画', offsetDays: -3, defaultRole: null },
       { kind: 'upload', title: '完了', offsetDays: 0, defaultRole: null },

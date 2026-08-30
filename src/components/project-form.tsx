@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, TextInput, View } from 'react-native';
 
 import { Text } from '@/components/app-text';
 import { ErrorView } from '@/components/async-state';
+import { DateField, TimeField } from '@/components/pixel/date-picker';
 import { PixelIcon } from '@/components/pixel/icon';
 import {
   BORDER_WIDTH,
@@ -15,6 +16,7 @@ import {
   SPACING,
 } from '@/constants/theme';
 import type { ProjectInput } from '@/lib/api';
+import { isValidDateKey, isValidTime, toIsoAt } from '@/lib/date-input';
 import { TASK_TEMPLATES } from '@/lib/task-template';
 import type { ProjectKind } from '@/types';
 
@@ -45,15 +47,6 @@ const KIND_ICON: Record<ProjectKind, 'longPublish' | 'shortPublish'> = {
   sns: 'shortPublish',
   other: 'shortPublish',
 };
-
-const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
-const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
-
-function isRealDate(s: string): boolean {
-  const [y, m, d] = s.split('-').map(Number);
-  const dt = new Date(y, m - 1, d);
-  return dt.getFullYear() === y && dt.getMonth() === m - 1 && dt.getDate() === d;
-}
 
 export interface ProjectFormInitial {
   title: string;
@@ -92,11 +85,11 @@ export function ProjectForm({
 
   const validate = (): string | null => {
     if (title.trim().length === 0) return 'タイトルを入れてください';
-    if (!DATE_RE.test(publishDate) || !isRealDate(publishDate)) {
+    if (!isValidDateKey(publishDate)) {
       return '公開予定日は 2026-09-05 の形式で入れてください';
     }
-    if (!TIME_RE.test(publishTime)) return '公開時刻は 19:00 の形式で入れてください';
-    if (shootDate.length > 0 && (!DATE_RE.test(shootDate) || !isRealDate(shootDate))) {
+    if (!isValidTime(publishTime)) return '公開時刻は 19:00 の形式で入れてください';
+    if (shootDate.length > 0 && !isValidDateKey(shootDate)) {
       return '撮影予定日は 2026-09-01 の形式で入れてください（空でも構いません）';
     }
     return null;
@@ -115,9 +108,9 @@ export function ProjectForm({
         {
           title: title.trim(),
           kind,
-          publish_at: `${publishDate}T${publishTime}:00+09:00`,
+          publish_at: toIsoAt(publishDate, publishTime),
           // 撮影は時刻まで決まっていないことが多いので、既定を昼にしておく
-          shoot_at: shootDate.length > 0 ? `${shootDate}T12:00:00+09:00` : null,
+          shoot_at: shootDate.length > 0 ? toIsoAt(shootDate, '12:00') : null,
           memo: memo.trim().length > 0 ? memo.trim() : null,
         },
         applyTemplate,
@@ -163,42 +156,27 @@ export function ProjectForm({
         </Text>
       </Field>
 
-      <View style={styles.row}>
-        <Field label="公開予定日" style={styles.rowItem}>
-          <TextInput
-            value={publishDate}
-            onChangeText={setPublishDate}
-            placeholder="2026-09-05"
-            placeholderTextColor={COLORS.textMuted}
-            autoCapitalize="none"
-            autoCorrect={false}
-            style={styles.input}
-          />
-        </Field>
-        <Field label="公開時刻" style={styles.rowItem}>
-          <TextInput
-            value={publishTime}
-            onChangeText={setPublishTime}
-            placeholder="19:00"
-            placeholderTextColor={COLORS.textMuted}
-            autoCapitalize="none"
-            autoCorrect={false}
-            style={styles.input}
-          />
-        </Field>
-      </View>
-
-      <Field label="撮影予定日（任意）">
-        <TextInput
-          value={shootDate}
-          onChangeText={setShootDate}
-          placeholder="2026-09-01"
-          placeholderTextColor={COLORS.textMuted}
-          autoCapitalize="none"
-          autoCorrect={false}
-          style={styles.input}
-        />
-      </Field>
+      {/* 手打ちとピッカーの両方で入れられる（date-picker.tsx の冒頭コメント参照）。
+          公開予定日は工程の締切逆算の基点なので、ここを間違えると全工程がずれる（要件定義書 F2） */}
+      <DateField
+        label="公開予定日"
+        value={publishDate}
+        onChange={setPublishDate}
+        placeholder="2026-09-05"
+        hint="ここを基点に全工程の締切が決まります"
+      />
+      <TimeField
+        label="公開時刻"
+        value={publishTime}
+        onChange={setPublishTime}
+        placeholder="19:00"
+      />
+      <DateField
+        label="撮影予定日（任意）"
+        value={shootDate}
+        onChange={setShootDate}
+        placeholder="2026-09-01"
+      />
 
       <Field label="メモ（任意）">
         <TextInput
@@ -264,8 +242,6 @@ const styles = StyleSheet.create({
   container: { padding: SPACING.md },
   field: { marginBottom: SPACING.lg },
   label: { fontSize: FONT_SIZE.body, marginBottom: SPACING.xs },
-  row: { flexDirection: 'row', gap: SPACING.md },
-  rowItem: { flex: 1 },
   input: {
     borderWidth: BORDER_WIDTH.normal,
     borderColor: COLORS.frameDark,
