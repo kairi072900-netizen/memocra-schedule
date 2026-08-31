@@ -49,6 +49,30 @@ const palette = {
   stone: '#9A9086',
   stoneDark: '#6F675E',
   flag: '#B0453D',
+  /** 遠景の丘。手前の草原より明度を上げて奥行きを出す。 */
+  grassFar: '#93B06C',
+  /** 木の幹・村の屋根。 */
+  trunk: '#6B4A2F',
+  roof: '#A8503C',
+
+  // UI アクセント
+  /** 主アクション・選択中の青（`blue` と同値。意味が違うので別名で持つ）。 */
+  blueUi: '#2F6FB5',
+  /** 立体ボタンの下辺。押されていない状態の「厚み」。 */
+  blueDeep: '#1D4F86',
+  /** 木のボタンの下辺。 */
+  woodEdgeDark: '#3B2A1E',
+  /** 枠の内側に入れる細いハイライト（二重線の内側）。 */
+  parchmentEdge: '#C9B48F',
+  /** カレンダーのセルの地。羊皮紙より明るくして、予定チップを浮かせる。 */
+  cell: '#FBF6EA',
+
+  // 予定種別の淡色地（チップの背景）。**色を増やしたのではなく、
+  // 既存の4色を羊皮紙に馴染む濃度まで薄めたもの**。意味は元の色と同じ。
+  redTint: '#F3DCD9',
+  purpleTint: '#E7DCF0',
+  greenTint: '#DCEBDD',
+  blueTint: '#D9E4F1',
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -140,9 +164,32 @@ export const COLORS = {
   cloud: palette.cloud,
   grass: palette.grass,
   grassDark: palette.grassDark,
+  grassFar: palette.grassFar,
   stone: palette.stone,
   stoneDark: palette.stoneDark,
   flag: palette.flag,
+  trunk: palette.trunk,
+  roof: palette.roof,
+
+  /**
+   * 主アクション・選択中（CLAUDE.md §3.4 の色の意味表に追加）。
+   *
+   * 「＋新規登録」「この案を適用する」のような**その画面で一番やってほしい操作**と、
+   * 「いま選ばれているもの」にだけ使う。おまけの操作には使わないこと
+   * （全部が青くなると、どれが主なのか分からなくなる）。
+   *
+   * 予定種別の「撮影（青）」と同じ色だが、**予定チップの中では使わない**ので
+   * 衝突しない。チップ側は色帯とアイコンで種別を示す。
+   */
+  primary: palette.blueUi,
+  /** 立体ボタンの下辺。押すとこのぶん沈む（§3.1 影はぼかさず硬い矩形）。 */
+  primaryEdge: palette.blueDeep,
+  /** 木のボタンの下辺。 */
+  buttonEdge: palette.woodEdgeDark,
+  /** 枠の内側に入れる細いハイライト。二重線の内側を作る。 */
+  panelEdge: palette.parchmentEdge,
+  /** カレンダーのセルの地。羊皮紙より明るくして予定チップを浮かせる。 */
+  cell: palette.cell,
 } as const;
 
 export type ColorToken = keyof typeof COLORS;
@@ -160,6 +207,11 @@ export interface Badge {
   readonly color: string;
   readonly symbol: string;
   readonly label: string;
+  /**
+   * 淡色の地（省略可）。予定チップの背景のように、**同じ意味のまま面で塗りたい**
+   * ときだけ使う。`color` を薄めた値であって、別の意味を持つ色ではない。
+   */
+  readonly tint?: string;
 }
 
 /**
@@ -171,13 +223,13 @@ export interface Badge {
  */
 export const SCHEDULE_KIND = {
   /** ロング動画の公開予定。 */
-  longPublish: { color: palette.red, symbol: '▶', label: 'ロング公開' },
+  longPublish: { color: palette.red, symbol: '▶', label: 'ロング公開', tint: palette.redTint },
   /** ショート動画の公開予定。 */
-  shortPublish: { color: palette.purple, symbol: '▷', label: 'ショート公開' },
+  shortPublish: { color: palette.purple, symbol: '▷', label: 'ショート公開', tint: palette.purpleTint },
   /** 配信予定。 */
-  stream: { color: palette.green, symbol: '◉', label: '配信' },
+  stream: { color: palette.green, symbol: '◉', label: '配信', tint: palette.greenTint },
   /** 撮影予定。 */
-  shoot: { color: palette.blue, symbol: '■', label: '撮影' },
+  shoot: { color: palette.blue, symbol: '■', label: '撮影', tint: palette.blueTint },
 } as const satisfies Record<string, Badge>;
 
 export type ScheduleKindToken = keyof typeof SCHEDULE_KIND;
@@ -370,6 +422,28 @@ export const LONG_TEXT = {
 } as const;
 
 /**
+ * ゴシックのスケール（2026-08-31 追加）。
+ *
+ * 【なぜ増やしたか】ドット絵フォントは 17 / 34 / 51 の3つしか使えない（§3.1）。
+ * カードの説明文・メタ情報・小さなラベルを 17px で組むと、密度の高い画面
+ * （カレンダーの下部パネル、メンバーカード、負荷の内訳）で行数が増えて溢れる。
+ * **文字を小さくしたいときの逃げ道が LONG_TEXT(15px) しか無かった。**
+ *
+ * 【使い分け】
+ *   見出し・年月・時刻・件数・ボタンのラベル → ドット絵（FONT_SIZE）
+ *   カードの本文・メタ情報・補助ラベル       → ここ（TEXT）
+ *   メモ・議事録・AIの出力のような長い文章    → LONG_TEXT
+ *
+ * **これ以上サイズを増やさないこと。** 増やすほど画面ごとの揺れが戻る。
+ */
+export const TEXT = {
+  /** カードの本文・説明。 */
+  body: { fontFamily: FONT_FAMILY.gothic, fontSize: 14, lineHeight: 20 },
+  /** メタ情報・補助ラベル。これより小さくしない（読めなくなる）。 */
+  small: { fontFamily: FONT_FAMILY.gothic, fontSize: 12, lineHeight: 18 },
+} as const;
+
+/**
  * 枠線の太さ。角丸なしの `borderWidth` ＋ 濃淡2色で立体枠を作る（CLAUDE.md §3.1）。
  * 硬い矩形の影のオフセットにも同じ値を使う。
  */
@@ -427,12 +501,18 @@ export const LAYOUT = {
    */
   sidebarWidth: SPACING.xxl * 8,
   /**
-   * この幅**以上**でサイドバーを出す。
-   * サイドバー256px を引いた残りでカレンダー（7列）がチップ表示のままでいられる幅
-   * （`compactCellWidth` 72px × 7列 + 余白）を下回らないように決めた。
-   * これ未満では下タブに戻す。
+   * この幅**以上**でサイドバーを出す（＝desktop）。
+   *
+   * 900 → 1024 に変更（2026-08-31）。900 だとタブレット横（1024前後）の手前で
+   * サイドバーが出てしまい、残り幅でカレンダー7列＋下部パネル3枚が窮屈だった。
+   * 一般的な desktop の下限に合わせる。
    */
-  sidebarMinWidth: 900,
+  sidebarMinWidth: 1024,
+  /**
+   * この幅**以上**をタブレットとして扱う（768〜1023）。
+   * 下タブのままだが、下部パネルを2枚横並びにできる程度の幅はある。
+   */
+  tabletMinWidth: 768,
   /**
    * 下部タブバーの高さ。
    * React Navigation は `tabBarIcon` が null を返してもアイコン枠を確保するため、
@@ -469,6 +549,26 @@ export const LAYOUT = {
    * **ヘッダーの行数やパネルの高さを変えたら、この値も見直すこと。**
    */
   calendarFitMinHeight: 800,
+
+  /**
+   * 画面の地に敷く風景（`components/app-background.tsx`）の、地面の帯の高さ。
+   * 広い画面用。狭い画面では `sceneryGroundHeightCompact` を使う
+   * （縦の余裕が無いので低くする）。
+   */
+  sceneryGroundHeight: SPACING.xxl * 3,
+  sceneryGroundHeightCompact: SPACING.xxl,
+
+  /**
+   * 立体ボタンの「厚み」。押されていないとき下辺にこのぶんの濃色が出て、
+   * 押すと同じぶん沈む（§3.1 影はぼかさず硬い矩形）。
+   */
+  buttonDepth: 3,
+
+  /** 通知の赤い丸バッジ。2桁まで収まる大きさ。 */
+  notifyBadgeSize: SPACING.lg + SPACING.xs,
+
+  /** 予定チップの左端に置く色帯の幅。 */
+  chipBarWidth: SPACING.xs,
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -482,6 +582,9 @@ export const theme = {
   spacing: SPACING,
   fontSize: FONT_SIZE,
   longText: LONG_TEXT,
+  text: TEXT,
+  taskStatus: TASK_STATUS,
+  workload: WORKLOAD,
   borderWidth: BORDER_WIDTH,
   fontFamily: FONT_FAMILY,
   layout: LAYOUT,
