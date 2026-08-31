@@ -2,13 +2,17 @@ import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { Text } from '@/components/app-text';
 import { NAV_ITEMS } from '@/components/nav/items';
-import { MemberAvatar, PixelIcon } from '@/components/pixel/icon';
+import { PixelIcon } from '@/components/pixel/icon';
+import { Avatar } from '@/components/ui/avatar';
+import { NotifyBadge } from '@/components/ui/badge';
+import { ProgressBar } from '@/components/ui/progress-bar';
 import {
   BORDER_WIDTH,
   COLORS,
   FONT_SIZE,
   LAYOUT,
   SPACING,
+  TEXT,
 } from '@/constants/theme';
 import type { LevelInfo } from '@/lib/level';
 import type { Member } from '@/types';
@@ -29,6 +33,7 @@ export function Sidebar({
   members,
   me,
   level,
+  unreadCount = 0,
 }: {
   /** いま開いているルート名（`(tabs)` 配下のファイル名）。 */
   currentRouteName: string | undefined;
@@ -37,6 +42,8 @@ export function Sidebar({
   /** ログイン中のメンバー。まだ取得できていなければ null。 */
   me: Member | null;
   level: LevelInfo | null;
+  /** お知らせの未読件数。0なら何も出ない。 */
+  unreadCount?: number;
 }) {
 
   return (
@@ -46,12 +53,17 @@ export function Sidebar({
         <Text style={styles.logoSub}>スケジュール管理アプリ</Text>
       </View>
 
-      {/* メンバー。色だけで判別させないため、下のカードで名前も出す（CLAUDE.md §3.4） */}
+      {/* パーティー。4人が「この世界の仲間」であることを最初に見せる。
+          **色だけで人を判別させない**ので、名前は下の自分のカードとメンバー画面に出す
+          （ここは顔ぶれの確認であって、個人を特定させる場所ではない。§3.4） */}
       {members.length > 0 && (
-        <View style={styles.memberRow}>
-          {members.map((m) => (
-            <MemberAvatar key={m.id} member={m} size={LAYOUT.avatarSize} />
-          ))}
+        <View style={styles.party}>
+          <Text style={styles.partyLabel}>パーティー</Text>
+          <View style={styles.memberRow}>
+            {members.map((m) => (
+              <Avatar key={m.id} member={m} size="md" />
+            ))}
+          </View>
         </View>
       )}
 
@@ -76,6 +88,11 @@ export function Sidebar({
               >
                 {item.label}
               </Text>
+              {item.name === 'notifications' && (
+                <View style={styles.navBadge}>
+                  <NotifyBadge count={unreadCount} />
+                </View>
+              )}
             </Pressable>
           );
         })}
@@ -86,7 +103,7 @@ export function Sidebar({
       {me && (
         <View style={styles.meCard}>
           <View style={styles.meTop}>
-            <MemberAvatar member={me} size={LAYOUT.avatarSize} />
+            <Avatar member={me} size="lg" />
             <View style={styles.meNames}>
               <Text style={styles.meName} numberOfLines={1}>
                 {me.name}
@@ -104,14 +121,9 @@ export function Sidebar({
               <Text style={styles.levelLabel}>
                 Lv.{level.level}　{level.expInLevel}/{level.expForNext} EXP
               </Text>
-              <View style={styles.expTrack}>
-                <View
-                  style={[
-                    styles.expFill,
-                    { width: `${(level.expInLevel / level.expForNext) * 100}%` },
-                  ]}
-                />
-              </View>
+              {/* 加点型。**HPは置かない**（要件定義書 12.6 / CLAUDE.md §2）。
+                  減る指標を個人に紐づけると、負荷集中が個人の問題に見えてしまう */}
+              <ProgressBar value={level.expInLevel / level.expForNext} color={COLORS.exp} size="sm" />
             </>
           )}
         </View>
@@ -134,12 +146,13 @@ const styles = StyleSheet.create({
   logo: { fontSize: FONT_SIZE.title, color: COLORS.textOnDark },
   logoSub: { fontSize: FONT_SIZE.body, color: COLORS.parchmentMuted },
 
+  party: { marginTop: SPACING.md, paddingHorizontal: SPACING.sm },
+  partyLabel: { ...TEXT.small, color: COLORS.parchmentMuted, textAlign: 'center' },
   memberRow: {
     flexDirection: 'row',
     justifyContent: 'center',
     gap: SPACING.xs,
-    marginTop: SPACING.md,
-    paddingHorizontal: SPACING.sm,
+    marginTop: SPACING.xs,
   },
 
   nav: { flex: 1, marginTop: SPACING.lg },
@@ -154,11 +167,14 @@ const styles = StyleSheet.create({
     borderLeftWidth: BORDER_WIDTH.thick,
     borderLeftColor: 'transparent',
   },
+  /** 現在地。地の明るさ**と**左の太い縦線（色だけに頼らない。§3.4） */
   navItemActive: {
     backgroundColor: COLORS.sidebarActive,
-    borderLeftColor: COLORS.textOnDark,
+    borderLeftColor: COLORS.primary,
   },
-  navLabel: { fontSize: FONT_SIZE.body, color: COLORS.parchmentMuted, flexShrink: 1 },
+  navLabel: { fontSize: FONT_SIZE.body, color: COLORS.parchmentMuted, flexGrow: 1, flexShrink: 1 },
+  /** 未読バッジは項目の右端に。絶対配置なので親に幅を食わせない */
+  navBadge: { width: LAYOUT.notifyBadgeSize, height: LAYOUT.notifyBadgeSize },
   navLabelActive: { color: COLORS.textOnDark },
 
   meCard: {
@@ -173,10 +189,5 @@ const styles = StyleSheet.create({
   meName: { fontSize: FONT_SIZE.body, color: COLORS.textOnDark },
   meRole: { fontSize: FONT_SIZE.body, color: COLORS.parchmentMuted },
   levelLabel: { fontSize: FONT_SIZE.body, color: COLORS.parchmentMuted, marginTop: SPACING.xs },
-  expTrack: {
-    height: SPACING.sm,
-    backgroundColor: COLORS.sidebarActive,
-    marginTop: BORDER_WIDTH.normal,
-  },
-  expFill: { height: '100%', backgroundColor: COLORS.exp },
+  meLevelGap: { height: BORDER_WIDTH.normal },
 });
