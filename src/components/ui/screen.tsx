@@ -4,6 +4,7 @@ import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Text } from '@/components/app-text';
+import { Panel } from '@/components/ui/panel';
 import { COLORS, FONT_SIZE, LAYOUT, SPACING } from '@/constants/theme';
 
 /**
@@ -63,8 +64,9 @@ export function ScreenHeader({
     else if (backTo) router.replace(backTo);
   };
 
+  // **枠で囲む。** 画面の地が風景（空）なので、地の上に文字を直接置くと読みにくい
   return (
-    <View style={styles.header}>
+    <Panel padding="sm" inset={false}>
       {backTo !== undefined && (
         <Text style={styles.back} onPress={goBack}>
           ◀ もどる
@@ -79,7 +81,7 @@ export function ScreenHeader({
         </View>
         {actions}
       </View>
-    </View>
+    </Panel>
   );
 }
 
@@ -112,7 +114,6 @@ const styles = StyleSheet.create({
   /** スクロールしない画面。残りの高さを中身が分け合う */
   fit: { flex: 1 },
 
-  header: { paddingHorizontal: SPACING.xs },
   back: {
     fontSize: FONT_SIZE.body,
     color: COLORS.textMuted,
