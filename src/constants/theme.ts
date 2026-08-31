@@ -489,6 +489,8 @@ export const LAYOUT = {
   avatarSize: SPACING.xl,
   /** チップの中に並べるミニアバター。 */
   avatarSizeSmall: SPACING.md,
+  /** サイドバーの「自分のカード」など、大きく見せるアバター。 */
+  avatarSizeLarge: SPACING.xxl + SPACING.lg,
   /** 予定ドット1つぶんの大きさ。1マス=1情報の正方形（要件定義書 12.1）。 */
   dotSize: SPACING.sm,
   /** 出欠バッジ。記号を FONT_SIZE.body で描くので、それが収まる大きさにする。 */
