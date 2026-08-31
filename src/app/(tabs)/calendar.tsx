@@ -10,6 +10,10 @@ import { MemberAvatar, PixelIcon } from '@/components/pixel/icon';
 import { PixelFrame } from '@/components/pixel/frame';
 import { ScheduleChip } from '@/components/schedule-chip';
 import { ScheduleSummary } from '@/components/schedule-summary';
+import { NotifyBadge, StatusBadge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Panel } from '@/components/ui/panel';
+import { SegmentedControl } from '@/components/ui/segmented';
 import {
   ATTENDANCE_STATUS,
   BORDER_WIDTH,
@@ -226,6 +230,21 @@ export default function CalendarScreen() {
 
   const myTasks = useMemo(() => myOpenTasks(tasks ?? [], myId), [tasks, myId]);
 
+  /**
+   * **自分がまだ答えていない出欠。**
+   *
+   * カレンダーをホームにしたので、`home`（今週）が持っていたこの役割をここへ移した。
+   * 未回答が埋もれると配信の日程が決まらない（要件定義書 F7 の課題そのもの）ので、
+   * 月を眺める前に目に入る位置に置く。0件なら何も出さない。
+   */
+  const unanswered = useMemo(() => {
+    if (!streams || !availabilities || !myId) return [];
+    return streams
+      .filter((s) => s.starts_at.slice(0, 10) >= todayKey)
+      .filter((s) => !availabilities.some((a) => a.stream_id === s.id && a.member_id === myId))
+      .sort((a, b) => a.starts_at.localeCompare(b.starts_at));
+  }, [streams, availabilities, myId, todayKey]);
+
   // 負荷サマリー（要件定義書 F4）。tasks / members は既に読んでいるので追加の取得は不要
   const workloads = useMemo(
     () => (members ? buildWorkloads(tasks ?? [], members, todayKey) : []),
@@ -245,7 +264,9 @@ export default function CalendarScreen() {
     setScreenWidth(e.nativeEvent.layout.width);
     setScreenHeight(e.nativeEvent.layout.height);
   }, []);
-  const gridWidth = Math.max(0, screenWidth - SPACING.sm * 2);
+  // 盤面（曜日の帯とグリッド）は左右に margin と 2px の枠を持つ。
+  // **その両方を引かないと7列目がはみ出す**（曜日の帯とグリッドがずれる）
+  const gridWidth = Math.max(0, screenWidth - SPACING.sm * 2 - BORDER_WIDTH.normal * 2);
   const cellWidth = gridWidth > 0 ? gridWidth / DAYS_IN_WEEK : 0;
   // セル幅が狭いときは文字を捨ててドット表示にする（要件定義書 12.3）
   const compact = cellWidth < LAYOUT.compactCellWidth;
@@ -284,68 +305,86 @@ export default function CalendarScreen() {
     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']} onLayout={onScreenLayout}>
       {/* ヘッダーは2行に収める。iPhone だと縦の余裕が無く、
           4行使うと6行のグリッドが最初の画面から押し出される（実機で踏んだ） */}
-      <PixelFrame style={styles.header}>
+      <Panel style={styles.header} padding="sm" inset={false}>
         <View style={styles.headerRow}>
-          <NavButton label="‹" onPress={() => goToMonth(addMonths(cursor, -1))} />
-          <Text style={styles.monthLabel} numberOfLines={1}>
-            {formatMonthLabel(cursor)}
-          </Text>
-          <NavButton label="›" onPress={() => goToMonth(addMonths(cursor, 1))} />
-        </View>
-
-        <View style={styles.headerRow}>
-          <NavButton
+          {/* 月／週の切り替え。**中身は未実装のスタブ**（要件定義書 F6）。
+              広い画面だけ出す（狭い画面で1行使う価値がまだ無い） */}
+          {!compact && (
+            <SegmentedControl<'month' | 'week'>
+              options={[
+                { value: 'month', label: 'カレンダー' },
+                { value: 'week', label: '週表示' },
+              ]}
+              value="month"
+              onChange={(v) => setWeekViewNote(v === 'week')}
+            />
+          )}
+          <View style={styles.monthNav}>
+            <NavButton label="‹" onPress={() => goToMonth(addMonths(cursor, -1))} />
+            <Text style={styles.monthLabel} numberOfLines={1}>
+              {formatMonthLabel(cursor)}
+            </Text>
+            <NavButton label="›" onPress={() => goToMonth(addMonths(cursor, 1))} />
+          </View>
+          <Button
             label="今日"
+            variant="ghost"
             onPress={() => {
               setCursor(currentMonth);
               setSelectedDate(todayKey);
             }}
           />
-          {/* 新規登録はタブにもあるが、カレンダーを見ながら足せる導線をここにも置く */}
-          <Pressable onPress={() => router.push('/new')} style={styles.primaryButton}>
-            <PixelIcon name="plus" size={LAYOUT.iconSize} color={COLORS.text} />
-            <Text style={styles.navLabel}>新規登録</Text>
-          </Pressable>
+        </View>
 
-          {/* 月／週の切り替え。中身が未実装のスタブなので、縦に余裕がある広い画面だけ出す
-              （要件定義書 F6 で実装したらモバイルにも出すか見直す） */}
-          {!compact && (
-            <Pressable style={styles.toggleButton} onPress={() => setWeekViewNote(true)}>
-              <Text style={styles.navLabelMuted}>週表示</Text>
-            </Pressable>
-          )}
+        <View style={styles.headerRow}>
+          {/* 新規登録はタブにもあるが、カレンダーを見ながら足せる導線をここにも置く。
+              この画面で一番やってほしい操作なので primary（青） */}
+          <Button label="新規登録" icon="plus" variant="primary" onPress={() => router.push('/new')} />
+
+          <View style={styles.headerSpacer} />
 
           {/* お知らせ。未読があるときだけ件数を出す */}
-          <Pressable onPress={() => router.push('/notifications')} style={styles.bellButton}>
+          <Pressable onPress={() => router.push('/notifications')} style={styles.iconButton}>
             <PixelIcon name="notifications" size={LAYOUT.iconSize} color={COLORS.text} />
-            {unreadCount > 0 && (
-              <View style={styles.bellBadge}>
-                <Text style={styles.bellBadgeText}>{unreadCount}</Text>
-              </View>
-            )}
+            <NotifyBadge count={unreadCount} />
           </Pressable>
 
           {/* 狭い画面ではサイドバーが無いので、設定への導線をここに置く
               （メンバー・設定は下タブに出ないため。components/nav/items.tsx の約束） */}
-          <Pressable onPress={() => router.push('/settings')} style={styles.bellButton}>
+          <Pressable onPress={() => router.push('/settings')} style={styles.iconButton}>
             <PixelIcon name="settings" size={LAYOUT.iconSize} color={COLORS.text} />
           </Pressable>
         </View>
 
         {weekViewNote && <Text style={styles.note}>週表示は準備中です</Text>}
-      </PixelFrame>
+      </Panel>
+
+      {/* 未回答があるときだけ出す。**「次に何をすればいいか」を最初に見せる** */}
+      {unanswered.length > 0 && (
+        <Pressable style={styles.todo} onPress={() => router.push('/availability')}>
+          <StatusBadge badge={ATTENDANCE_STATUS.hasNoAnswer} size="sm" />
+          <Text style={styles.todoText} numberOfLines={1}>
+            出欠がまだのものが {unanswered.length}件あります
+          </Text>
+          <Text style={styles.todoAction}>答える ›</Text>
+        </Pressable>
+      )}
 
       {/* 凡例は場所を食うので、セルがチップ表示になる幅のときだけ出す */}
       {!compact && <CalendarLegend showExternal={hasExternalCalendar} />}
 
+      {/* 曜日は濃茶の帯に白文字（モックアップ）。**この帯の中でだけ**日=赤・土=青にする。
+          以前は「予定種別の赤（ロング公開）・青（撮影）と衝突する」として色分けを
+          避けていたが、種別はチップの色枠が示すようになったので衝突しない。
+          **セル背景には引き続き色を敷かない**（§3.4） */}
       <View style={styles.weekdayRow}>
         {WEEKDAY_LABELS.map((label, i) => (
           <View key={label} style={[styles.weekdayCell, { width: cellWidth }]}>
-            {/* 土日は文字色だけ変える。セル背景には色を敷かない（CLAUDE.md §3.4） */}
             <Text
               style={[
-                styles.weekdayText,
-                (i === 0 || i === DAYS_IN_WEEK - 1) && styles.weekdayTextWeekend,
+                styles.weekdayLabel,
+                i === 0 && styles.weekdaySun,
+                i === DAYS_IN_WEEK - 1 && styles.weekdaySat,
               ]}
             >
               {label}
@@ -539,11 +578,25 @@ function AttendanceBadge({ token }: { token: keyof typeof ATTENDANCE_STATUS }) {
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: COLORS.background },
 
-  header: { margin: SPACING.sm, padding: SPACING.sm },
+  header: { margin: SPACING.sm },
+  monthNav: { flexDirection: 'row', alignItems: 'center', gap: SPACING.xs },
+  /** ヘッダー2行目で、左のボタン群と右のアイコン群を離す */
+  headerSpacer: { flexGrow: 1 },
+  iconButton: {
+    minHeight: LAYOUT.minTapSize,
+    minWidth: LAYOUT.minTapSize,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: BORDER_WIDTH.normal,
+    borderColor: COLORS.frameDark,
+    backgroundColor: COLORS.surface,
+  },
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    gap: SPACING.xs,
+    flexWrap: 'wrap',
   },
   monthLabel: { fontSize: FONT_SIZE.title, textAlign: 'center', marginBottom: SPACING.xs },
   navButton: {
@@ -615,10 +668,35 @@ const styles = StyleSheet.create({
   memberItem: { alignItems: 'center' },
   memberName: { fontSize: FONT_SIZE.body, color: COLORS.textMuted },
 
-  weekdayRow: { flexDirection: 'row', paddingHorizontal: SPACING.sm },
+  /** 曜日は濃茶の帯（モックアップ）。グリッドの上辺の枠も兼ねる */
+  /** 未回答の呼びかけ。黄色い地で「対応が要る」ことを示し、文言でも言う（§3.4） */
+  todo: {
+    minHeight: LAYOUT.minTapSize,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.sm,
+    marginHorizontal: SPACING.sm,
+    marginBottom: SPACING.sm,
+    paddingHorizontal: SPACING.sm,
+    borderWidth: BORDER_WIDTH.normal,
+    borderColor: COLORS.frameDark,
+    backgroundColor: COLORS.surfaceSunken,
+  },
+  todoText: { fontSize: FONT_SIZE.body, flexGrow: 1, flexShrink: 1 },
+  todoAction: { fontSize: FONT_SIZE.body, color: COLORS.textMuted },
+  weekdayRow: {
+    flexDirection: 'row',
+    marginHorizontal: SPACING.sm,
+    backgroundColor: COLORS.frameDark,
+    borderWidth: BORDER_WIDTH.normal,
+    borderColor: COLORS.frameDark,
+  },
   weekdayCell: { alignItems: 'center', paddingVertical: SPACING.xs },
-  weekdayText: { fontSize: FONT_SIZE.body, color: COLORS.textMuted },
-  weekdayTextWeekend: { color: COLORS.textWeekend },
+  weekdayLabel: { fontSize: FONT_SIZE.body, color: COLORS.textOnDark },
+  /** **この帯の中でだけ**日=赤・土=青。地が濃茶なので、羊皮紙の上の
+      予定種別の色（赤=ロング公開 / 青=撮影）とは見え方がはっきり違う */
+  weekdaySun: { color: COLORS.weekdaySun },
+  weekdaySat: { color: COLORS.weekdaySat },
 
   scrollBody: { paddingBottom: SPACING.xl },
   /** 広い画面用。縦に伸ばして、中の gridArea が残りを取れるようにする */
@@ -627,14 +705,22 @@ const styles = StyleSheet.create({
   gridArea: { flex: 1, minHeight: 0 },
   /** 広い画面で下部に敷くパネル行。溢れる中身は各パネルの中でスクロールする */
   panelRow: { height: LAYOUT.panelRowHeight },
-  grid: { paddingHorizontal: SPACING.sm },
+  /** グリッドは曜日の帯と同じ幅で、濃茶の枠で囲んで1枚の盤面に見せる */
+  grid: {
+    marginHorizontal: SPACING.sm,
+    borderWidth: BORDER_WIDTH.normal,
+    borderTopWidth: 0,
+    borderColor: COLORS.frameDark,
+    backgroundColor: COLORS.cell,
+  },
   selectedSection: { paddingHorizontal: SPACING.sm, paddingTop: SPACING.md },
   selectedHeading: { fontSize: FONT_SIZE.title, marginBottom: SPACING.sm },
   hint: { fontSize: FONT_SIZE.body, color: COLORS.textMuted },
+  /** セルの地は羊皮紙より明るくする。予定チップの淡色地が浮いて見える */
   cell: {
     borderWidth: BORDER_WIDTH.hairline,
-    borderColor: COLORS.frameLight,
-    backgroundColor: COLORS.surface,
+    borderColor: COLORS.panelEdge,
+    backgroundColor: COLORS.cell,
     paddingHorizontal: SPACING.xs,
     paddingTop: SPACING.xs,
   },

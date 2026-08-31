@@ -73,6 +73,10 @@ const palette = {
   purpleTint: '#E7DCF0',
   greenTint: '#DCEBDD',
   blueTint: '#D9E4F1',
+
+  // 曜日の帯（濃茶）の上に乗る日曜・土曜。地が暗いので明度を上げてある
+  weekendRed: '#E88B85',
+  weekendBlue: '#8FB6E0',
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -190,6 +194,18 @@ export const COLORS = {
   panelEdge: palette.parchmentEdge,
   /** カレンダーのセルの地。羊皮紙より明るくして予定チップを浮かせる。 */
   cell: palette.cell,
+
+  /**
+   * 曜日の帯の中の日曜・土曜（2026-08-31 追加）。
+   *
+   * §3.1 は以前「曜日の色分けは行わない」としていた。日曜赤・土曜青が
+   * 予定種別の赤（ロング公開）・青（撮影）と衝突するためだったが、
+   * **濃茶の帯の中の文字色**に限れば、羊皮紙の上に置かれる予定チップとは
+   * 見え方がはっきり違うので混同しない。
+   * **セルの背景には引き続き色を敷かない。**
+   */
+  weekdaySun: palette.weekendRed,
+  weekdaySat: palette.weekendBlue,
 } as const;
 
 export type ColorToken = keyof typeof COLORS;

@@ -1,12 +1,12 @@
 import { StyleSheet, View } from 'react-native';
 
 import { Text } from '@/components/app-text';
-import { MemberAvatar } from '@/components/pixel/icon';
+import { Avatar } from '@/components/ui/avatar';
+import { ProgressBar } from '@/components/ui/progress-bar';
 import {
   BORDER_WIDTH,
   COLORS,
   FONT_SIZE,
-  LAYOUT,
   SPACING,
   WORKLOAD,
 } from '@/constants/theme';
@@ -52,7 +52,7 @@ export function WorkloadSummary({
         return (
           <View key={w.member.id} style={styles.row}>
             <View style={styles.labelRow}>
-              <MemberAvatar member={w.member} size={LAYOUT.avatarSizeSmall} />
+              <Avatar member={w.member} size="sm" />
               <Text style={styles.name} numberOfLines={1}>
                 {w.member.name}
               </Text>
@@ -62,14 +62,10 @@ export function WorkloadSummary({
               </Text>
             </View>
 
-            <View style={styles.barTrack}>
-              <View
-                style={[
-                  styles.barFill,
-                  { width: `${(w.openCount / max) * 100}%`, backgroundColor: token.color },
-                ]}
-              />
-            </View>
+            {/* バーは**常にメンバーの識別色**（モックアップ）。誰の分かが一目で分かる。
+                集中していても色は変えない — 変えると「色＝その人」という対応が崩れ、
+                誰のバーか読めなくなる。**警告は ⚠ と「全体の57%」という言葉で出す**（§3.4） */}
+            <ProgressBar value={w.openCount / max} color={w.member.color} />
 
             {/* 数値の言葉を必ず添える。色だけで意味を伝えない（§3.4） */}
             <Text style={styles.detail}>
@@ -106,16 +102,6 @@ const styles = StyleSheet.create({
   labelRow: { flexDirection: 'row', alignItems: 'center', gap: SPACING.xs },
   name: { fontSize: FONT_SIZE.body, flexShrink: 1, flexGrow: 1 },
   count: { fontSize: FONT_SIZE.body },
-  /** バーの地。枠線で「最大値まで」の目盛りを示す */
-  barTrack: {
-    height: SPACING.md,
-    borderWidth: BORDER_WIDTH.hairline,
-    borderColor: COLORS.frameLight,
-    backgroundColor: COLORS.background,
-    marginTop: BORDER_WIDTH.normal,
-  },
-  /** 角丸なし・グラデーションなしの硬い矩形 */
-  barFill: { height: '100%' },
   detail: { fontSize: FONT_SIZE.body, color: COLORS.textMuted, marginTop: BORDER_WIDTH.normal },
   warning: { fontSize: FONT_SIZE.body, marginTop: SPACING.xs },
   unassigned: { fontSize: FONT_SIZE.body, color: COLORS.danger, marginTop: SPACING.xs },

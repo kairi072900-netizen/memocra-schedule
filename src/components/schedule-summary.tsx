@@ -1,9 +1,10 @@
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { Text } from '@/components/app-text';
-import { MemberAvatar, PixelIcon } from '@/components/pixel/icon';
+import { PixelIcon } from '@/components/pixel/icon';
+import { Avatar } from '@/components/ui/avatar';
 import { WorkloadSummary } from '@/components/workload-summary';
-import { PixelFrame } from '@/components/pixel/frame';
+import { Panel } from '@/components/ui/panel';
 import {
   ATTENDANCE_STATUS,
   BORDER_WIDTH,
@@ -71,7 +72,7 @@ export function ScheduleSummary({
 }) {
   return (
     <View style={styles.container}>
-      <Panel title={selectedLabel} onPressTitle={onPressAdd} actionLabel="＋ 追加">
+      <Panel title={selectedLabel} onPressAction={onPressAdd} actionLabel="＋ 追加" padding="sm" inset={false} scroll style={styles.panel}>
         {selectedEvents.length === 0 ? (
           <Text style={styles.empty}>予定はありません</Text>
         ) : (
@@ -81,7 +82,7 @@ export function ScheduleSummary({
         )}
       </Panel>
 
-      <Panel title="今週の公開予定">
+      <Panel title="今週の公開予定" padding="sm" inset={false} scroll style={styles.panel}>
         {weekPublishEvents.length === 0 ? (
           <Text style={styles.empty}>公開予定はありません</Text>
         ) : (
@@ -92,12 +93,12 @@ export function ScheduleSummary({
       </Panel>
 
       {/* モックアップ下段の3枚目「負荷サマリー」。要件定義書 F4 */}
-      <Panel title="負荷サマリー" onPressTitle={onPressWorkload}>
+      <Panel title="負荷サマリー" onPressAction={onPressWorkload} actionLabel="すべて見る ›" padding="sm" inset={false} scroll style={styles.panel}>
         <WorkloadSummary workloads={workloads} unassigned={unassignedCount} compact />
       </Panel>
 
       {/* モックアップの「締切タスク（自分）」。要件定義書 S1 の一部でもある */}
-      <Panel title={`締切タスク（自分） ${myTasks.length}件`}>
+      <Panel title={`締切タスク（自分） ${myTasks.length}件`} padding="sm" inset={false} scroll style={styles.panel}>
         {myTasks.length === 0 ? (
           <Text style={styles.empty}>自分の未完了タスクはありません</Text>
         ) : (
@@ -105,41 +106,6 @@ export function ScheduleSummary({
         )}
       </Panel>
     </View>
-  );
-}
-
-function Panel({
-  title,
-  children,
-  onPressTitle,
-  actionLabel = 'すべて見る ›',
-}: {
-  title: string;
-  children: React.ReactNode;
-  /** 渡すと見出しが右端のラベル付きタップ領域になる。 */
-  onPressTitle?: () => void;
-  /** 見出し右端の文言。遷移だけでなく「＋ この日に追加」のような操作にも使う。 */
-  actionLabel?: string;
-}) {
-  return (
-    <PixelFrame style={styles.panel}>
-      {onPressTitle ? (
-        <Pressable style={styles.panelTitleRow} onPress={onPressTitle}>
-          <Text style={styles.panelTitle} numberOfLines={1}>
-            {title}
-          </Text>
-          <Text style={styles.panelMore} numberOfLines={1}>
-            {actionLabel}
-          </Text>
-        </Pressable>
-      ) : (
-        <Text style={styles.panelTitle} numberOfLines={1}>
-          {title}
-        </Text>
-      )}
-      {/* 広い画面ではパネルの高さが固定なので、中身が多いときはここでスクロールする */}
-      <ScrollView style={styles.panelBody}>{children}</ScrollView>
-    </PixelFrame>
   );
 }
 
@@ -188,7 +154,7 @@ function SummaryRow({
       {answers && (
         <View style={styles.answerRow}>
           {answers.map(({ member }) => (
-            <MemberAvatar key={member.id} member={member} size={LAYOUT.avatarSizeSmall} />
+            <Avatar key={member.id} member={member} size="sm" />
           ))}
           {status && (
             <View style={[styles.statusBadge, { backgroundColor: status.color }]}>
@@ -246,19 +212,9 @@ const styles = StyleSheet.create({
    * 320px 幅でも1枚が収まり、**PC（サイドバーを引いた約1000px）では4枚が横1列**に並ぶ幅。
    * 4枚 × 220 + 余白 ≒ 940 なので、1000px あれば折り返さない。
    */
-  panel: { flexGrow: 1, flexBasis: 220, padding: SPACING.sm, minHeight: 0 },
-  panelTitle: { fontSize: FONT_SIZE.body, marginBottom: SPACING.sm, flexShrink: 1 },
-  panelBody: { flexGrow: 0, flexShrink: 1 },
-  panelTitleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  panel: { flexGrow: 1, flexBasis: 220, minHeight: 0 },
   // 右端のラベルは縮めない（縮むのは見出しのほう）。
   // 折り返すと見出しが1行ぶん押し下げられ、パネルの中身が隠れる
-  panelMore: {
-    fontSize: FONT_SIZE.body,
-    color: COLORS.textMuted,
-    marginBottom: SPACING.sm,
-    flexShrink: 0,
-    marginLeft: SPACING.sm,
-  },
   empty: { fontSize: FONT_SIZE.body, color: COLORS.textMuted },
   row: {
     borderTopWidth: BORDER_WIDTH.hairline,

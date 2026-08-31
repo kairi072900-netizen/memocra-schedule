@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { Pressable, StyleSheet, View, type ViewStyle } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View, type ViewStyle } from 'react-native';
 
 import { Text } from '@/components/app-text';
 import { PixelFrame } from '@/components/pixel/frame';
@@ -27,6 +27,12 @@ export function Panel({
   padding = 'md',
   /** 二重線の内枠を出すか。パネルの中に入れ子にするときは false にして線を減らす。 */
   inset = true,
+  /**
+   * 中身をパネルの中でスクロールさせる。
+   * **高さが固定されたパネル**（カレンダー下部の4枚）で必要。
+   * 中身が溢れてもパネル自体は伸びず、中だけが動く。
+   */
+  scroll = false,
   style,
 }: {
   children: ReactNode;
@@ -35,13 +41,14 @@ export function Panel({
   onPressAction?: () => void;
   padding?: 'none' | 'sm' | 'md';
   inset?: boolean;
+  scroll?: boolean;
   style?: ViewStyle;
 }) {
   const pad = padding === 'none' ? 0 : padding === 'sm' ? SPACING.sm : SPACING.md;
 
   return (
     <PixelFrame style={StyleSheet.flatten([styles.frame, style])}>
-      <View style={[inset && styles.inset, { padding: pad }]}>
+      <View style={[styles.inner, inset && styles.inset, { padding: pad }]}>
         {title !== undefined &&
           (onPressAction ? (
             <Pressable style={styles.titleRow} onPress={onPressAction}>
@@ -59,7 +66,7 @@ export function Panel({
               {title}
             </Text>
           ))}
-        {children}
+        {scroll ? <ScrollView style={styles.scrollBody}>{children}</ScrollView> : children}
       </View>
     </PixelFrame>
   );
@@ -68,6 +75,9 @@ export function Panel({
 // borderRadius は使わない（CLAUDE.md §3.1）。値はすべて theme.ts から読む。
 const styles = StyleSheet.create({
   frame: { backgroundColor: COLORS.surface },
+  /** 高さが固定された親の中で、はみ出しをスクロールに逃がすために必要 */
+  inner: { flexShrink: 1 },
+  scrollBody: { flexGrow: 0, flexShrink: 1 },
   /** 二重線の内側。木枠のすぐ内に細い線を1本置く */
   inset: {
     borderWidth: BORDER_WIDTH.hairline,
