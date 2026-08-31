@@ -5,7 +5,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Text } from '@/components/app-text';
 import { ErrorView, LoadingView } from '@/components/async-state';
-import { MemberAvatar } from '@/components/pixel/icon';
+import { Avatar } from '@/components/ui/avatar';
+import { AVATAR_KEYS, avatarSource, HAS_AVATAR_IMAGES } from '@/constants/avatars';
 import { PixelFrame } from '@/components/pixel/frame';
 import {
   BORDER_WIDTH,
@@ -114,13 +115,14 @@ function MyProfile({
   const [role, setRole] = useState(member.role);
   const [color, setColor] = useState(member.color);
   const [activeHours, setActiveHours] = useState(member.active_hours ?? '');
+  const [avatarUrl, setAvatarUrl] = useState(member.avatar_url);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
 
   const level = levelOf(doneTaskCount(tasks, member.id));
   // 表示中の値でプレビューする。保存前でも色の見え方が分かる
-  const preview: Member = { ...member, color };
+  const preview: Member = { ...member, color, avatar_url: avatarUrl };
 
   const save = async () => {
     if (name.trim().length === 0) {
@@ -135,6 +137,7 @@ function MyProfile({
         role: role.trim(),
         color,
         active_hours: activeHours.trim().length > 0 ? activeHours.trim() : null,
+        avatar_url: avatarUrl,
       });
       setSaved(true);
       onSaved();
@@ -148,7 +151,7 @@ function MyProfile({
   return (
     <PixelFrame style={styles.card}>
       <View style={styles.cardTop}>
-        <MemberAvatar member={preview} size={LAYOUT.avatarSize} />
+        <Avatar member={preview} size="md" />
         <Text style={styles.cardName}>{name || '（名前未設定）'}</Text>
         <Text style={styles.badge}>自分</Text>
       </View>
@@ -184,6 +187,32 @@ function MyProfile({
       <Text style={styles.hint}>
         役割を入れると、企画を作ったときにその工程の担当へ自動で入ります
       </Text>
+
+      {/* アイコン。**キーは色名**でメンバー名をコードに書かない（§3.2）。
+          画像を登録していないうちは何も出さず、ドット絵アバターのままにする */}
+      {HAS_AVATAR_IMAGES && (
+        <>
+          <Text style={styles.label}>アイコン</Text>
+          <View style={styles.chipRow}>
+            {AVATAR_KEYS.filter((k) => avatarSource(k) !== null).map((k) => (
+              <Pressable
+                key={k}
+                onPress={() => setAvatarUrl(k)}
+                style={[styles.avatarChip, avatarUrl === k && styles.avatarChipActive]}
+              >
+                <Avatar member={{ ...member, avatar_url: k }} size="lg" />
+              </Pressable>
+            ))}
+            <Pressable
+              onPress={() => setAvatarUrl(null)}
+              style={[styles.avatarChip, avatarUrl === null && styles.avatarChipActive]}
+            >
+              <Avatar member={{ ...member, avatar_url: null }} size="lg" />
+            </Pressable>
+          </View>
+          <Text style={styles.hint}>一番右はドット絵のアイコンです</Text>
+        </>
+      )}
 
       <Text style={styles.label}>識別色</Text>
       <View style={styles.chipRow}>
@@ -238,7 +267,7 @@ function OtherMember({
   return (
     <PixelFrame style={styles.card}>
       <View style={styles.cardTop}>
-        <MemberAvatar member={member} size={LAYOUT.avatarSize} />
+        <Avatar member={member} size="md" />
         <Text style={styles.cardName}>{member.name}</Text>
       </View>
       <Text style={styles.level}>
@@ -313,14 +342,26 @@ const styles = StyleSheet.create({
   },
   chipActive: { backgroundColor: COLORS.surfaceSunken, borderColor: COLORS.text },
   chipText: { fontSize: FONT_SIZE.body },
+  /** 色見本。**正方形にする。** 以前は minHeight(44) と height(20) を同時に
+      指定していて、minHeight が勝って 20×44 の縦長になっていた */
   colorChip: {
-    minHeight: LAYOUT.minTapSize,
-    width: LAYOUT.badgeSize,
-    height: LAYOUT.badgeSize,
+    width: LAYOUT.minTapSize,
+    height: LAYOUT.minTapSize,
     borderWidth: BORDER_WIDTH.normal,
     borderColor: COLORS.frameDark,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  avatarChip: {
+    padding: SPACING.xs,
+    borderWidth: BORDER_WIDTH.normal,
+    borderColor: COLORS.frameDark,
+    backgroundColor: COLORS.surface,
+  },
+  avatarChipActive: {
+    borderWidth: BORDER_WIDTH.thick,
+    borderColor: COLORS.text,
+    backgroundColor: COLORS.surfaceSunken,
   },
   colorChipActive: { borderColor: COLORS.text, borderWidth: BORDER_WIDTH.thick },
   colorCheck: { fontSize: FONT_SIZE.body, color: COLORS.textOnDark },

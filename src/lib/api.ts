@@ -329,7 +329,9 @@ export async function deleteTask(id: string): Promise<void> {
 // メンバー自身の情報 / お知らせ
 // ---------------------------------------------------------------------------
 
-export type MyMemberPatch = Partial<Pick<Member, 'name' | 'role' | 'color' | 'active_hours'>>;
+export type MyMemberPatch = Partial<
+  Pick<Member, 'name' | 'role' | 'color' | 'active_hours' | 'avatar_url'>
+>;
 
 /**
  * ログイン中の自分の `members` 行を更新する。

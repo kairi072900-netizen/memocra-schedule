@@ -8,9 +8,16 @@ import type { ImageSourcePropType } from 'react-native';
  * 入っていて、コードは名前を知らない。P8（他のグループへの配布）のときに
  * ここを差し替えるだけで済む。
  *
- * 【画像の置き方】
- *   1. `assets/avatars/` に PNG を置く（透過・正方形・表示サイズちょうどか、
- *      その整数倍。§3.1「拡大時に平滑化される」ため）
+ * 【画像の作り方】現在の4枚は**メンバー本人のマイクラスキンの顔**（本人の素材）。
+ * 元は 16×16 のドット絵を 512px に引き伸ばしたものだったので、
+ *   1. 各ブロックの最頻色を取って 16×16 に戻す（引き伸ばしのぼけを落とす）
+ *   2. NEAREST で 3倍にして **48×48** で書き出す
+ * としてある。48 にする理由は、**表示サイズ 48 / 24 / 12 のすべてが
+ * 48 の整数分の1になる**ため。半端な倍率だとドットが長方形になる（§3.1）。
+ * 元画像は `assets/avatars/source/` に残してある（別のサイズが要るとき用）。
+ *
+ * 【画像を足すとき】
+ *   1. `assets/avatars/` に PNG を置く（透過・正方形・48×48）
  *   2. 下の `SOURCES` にキーと `require` を1行足す
  *   3. メンバー画面の「アイコンを選ぶ」に自動で並ぶ
  *
@@ -31,10 +38,10 @@ export type AvatarKey = (typeof AVATAR_KEYS)[number];
  * 必ずファイルを置いてから足すこと。
  */
 const SOURCES: Partial<Record<AvatarKey, ImageSourcePropType>> = {
-  // yellow: require('@/assets/avatars/yellow.png'),
-  // gray:   require('@/assets/avatars/gray.png'),
-  // blue:   require('@/assets/avatars/blue.png'),
-  // green:  require('@/assets/avatars/green.png'),
+  yellow: require('@/assets/avatars/yellow.png'),
+  gray: require('@/assets/avatars/gray.png'),
+  blue: require('@/assets/avatars/blue.png'),
+  green: require('@/assets/avatars/green.png'),
 };
 
 /** 画像が1枚でも登録されているか。メンバー画面のピッカーの出し分けに使う。 */
