@@ -563,18 +563,19 @@ export const LAYOUT = {
    * スクロールに落とす（6行目が切れるのを防ぐ）。
    *
    * 内訳: ヘッダー2行 120 + 曜日行 33 + 凡例 33 + 下部パネル 224 +
-   * グリッド 6行 × 64 = 384 → 794。余白ぶんを見て 800 にしてある。
-   * **ヘッダーの行数やパネルの高さを変えたら、この値も見直すこと。**
+   * グリッド 6行 × 64 = 384 → 794。さらに広い画面では**地面の風景 80px**を
+   * 下に空けるので、合計 874。余白ぶんを見て 900 にしてある。
+   * **ヘッダーの行数・パネルの高さ・地面の高さを変えたら、この値も見直すこと。**
    */
-  calendarFitMinHeight: 800,
+  calendarFitMinHeight: 900,
 
   /**
    * 画面の地に敷く風景（`components/app-background.tsx`）の、地面の帯の高さ。
    * 広い画面用。狭い画面では `sceneryGroundHeightCompact` を使う
    * （縦の余裕が無いので低くする）。
    */
-  sceneryGroundHeight: SPACING.xxl * 3,
-  sceneryGroundHeightCompact: SPACING.xxl,
+  sceneryGroundHeight: 80,
+  sceneryGroundHeightCompact: 40,
 
   /**
    * 立体ボタンの「厚み」。押されていないとき下辺にこのぶんの濃色が出て、

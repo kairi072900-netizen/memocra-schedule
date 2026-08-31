@@ -31,7 +31,16 @@ export function AppBackground({ children }: { children: ReactNode }) {
       <View style={styles.groundWrap} pointerEvents="none">
         <SceneryGround width={width} height={groundHeight} />
       </View>
-      {children}
+      {/**
+       * **広い画面では地面のぶんだけ下を空ける。**
+       * 空けないとコンテンツが画面の一番下まで伸びて、風景を完全に覆ってしまう
+       * （実際に本番で踏んだ）。モックアップでもサイドバーは草原の上で止まっている。
+       *
+       * 狭い画面では空けない。下タブは指の届く一番下に置きたいし、
+       * iPhone は縦の余裕が無く、風景に高さを取られるとカレンダーが押し出される。
+       * スマホでは**パネルの隙間から覗く空**が世界観を担う。
+       */}
+      <View style={[styles.content, wide && { paddingBottom: groundHeight }]}>{children}</View>
     </View>
   );
 }
@@ -43,4 +52,5 @@ const styles = StyleSheet.create({
   sky: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: COLORS.sky },
   /** 風景は下端に固定。スクロールしない */
   groundWrap: { position: 'absolute', left: 0, right: 0, bottom: 0 },
+  content: { flex: 1 },
 });

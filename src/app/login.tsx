@@ -4,6 +4,8 @@ import { useState } from 'react';
 import { Platform, Pressable, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { AppBackground } from '@/components/app-background';
+
 import { Text } from '@/components/app-text';
 import { ErrorView } from '@/components/async-state';
 import { PixelFrame } from '@/components/pixel/frame';
@@ -86,7 +88,8 @@ export default function LoginScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <AppBackground>
+      <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
         <PixelFrame style={styles.frame}>
           {/* 起動画面は風景を出してよい場所（要件定義書 12.5 / §3.1） */}
@@ -109,12 +112,15 @@ export default function LoginScreen() {
         {error && <ErrorView message={error} onRetry={handleGoogleLogin} />}
       </View>
     </SafeAreaView>
+    </AppBackground>
   );
 }
 
 // borderRadius は使わない（CLAUDE.md §3.1）。値はすべて theme.ts から読む。
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: COLORS.background },
+  // **背景を塗らない。** 画面の地に敷いた風景（`components/app-background.tsx`）を
+  // 透かすため。塗ると風景が完全に隠れる（実際に本番で踏んだ）
+  safeArea: { flex: 1 },
   container: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: SPACING.lg },
   frame: {
     paddingVertical: SPACING.xxl,

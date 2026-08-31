@@ -3,6 +3,8 @@ import { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { AppBackground } from '@/components/app-background';
+
 import { Text } from '@/components/app-text';
 import { ErrorView, LoadingView } from '@/components/async-state';
 import { COLORS, FONT_SIZE, SPACING } from '@/constants/theme';
@@ -72,6 +74,7 @@ export default function LoginCallbackScreen() {
 
   if (error || gaveUp) {
     return (
+      <AppBackground>
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.container}>
           <ErrorView
@@ -85,20 +88,25 @@ export default function LoginCallbackScreen() {
           </Text>
         </View>
       </SafeAreaView>
+    </AppBackground>
     );
   }
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <AppBackground>
+      <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
         <LoadingView label="ログイン処理中…" />
       </View>
     </SafeAreaView>
+    </AppBackground>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: COLORS.background },
+  // **背景を塗らない。** 画面の地に敷いた風景（`components/app-background.tsx`）を
+  // 透かすため。塗ると風景が完全に隠れる（実際に本番で踏んだ）
+  safeArea: { flex: 1 },
   container: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: SPACING.lg },
   hint: {
     fontSize: FONT_SIZE.body,

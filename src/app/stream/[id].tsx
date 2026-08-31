@@ -286,7 +286,9 @@ export default function StreamDetailScreen() {
 
 // borderRadius は使わない（CLAUDE.md §3.1）。値はすべて theme.ts から読む。
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: COLORS.background },
+  // **背景を塗らない。** 画面の地に敷いた風景（`components/app-background.tsx`）を
+  // 透かすため。塗ると風景が完全に隠れる（実際に本番で踏んだ）
+  safeArea: { flex: 1 },
   body: { paddingBottom: SPACING.xxl },
   header: { margin: SPACING.sm, padding: SPACING.sm },
   // 「もどる」は Text の onPress。文字の高さ（17px）しか当たり判定が無いので、

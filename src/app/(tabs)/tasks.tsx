@@ -198,7 +198,9 @@ function FilterChip({
 
 // borderRadius は使わない（CLAUDE.md §3.1）。値はすべて theme.ts から読む。
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: COLORS.background },
+  // **背景を塗らない。** 画面の地に敷いた風景（`components/app-background.tsx`）を
+  // 透かすため。塗ると風景が完全に隠れる（実際に本番で踏んだ）
+  safeArea: { flex: 1 },
   header: { margin: SPACING.sm, padding: SPACING.sm, alignItems: 'center' },
   title: { fontSize: FONT_SIZE.title },
   body: { padding: SPACING.sm, paddingBottom: SPACING.xxl },
