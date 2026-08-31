@@ -601,6 +601,8 @@ const styles = StyleSheet.create({
   monthLabel: { fontSize: FONT_SIZE.title, textAlign: 'center', marginBottom: SPACING.xs },
   navButton: {
     minHeight: LAYOUT.minTapSize,
+    // 月送りは「‹ ›」の1文字なので、幅も明示しないと 29px になる（実測で踏んだ）
+    minWidth: LAYOUT.minTapSize,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: BORDER_WIDTH.normal,
